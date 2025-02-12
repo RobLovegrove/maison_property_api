@@ -1,12 +1,13 @@
 import pytest
 from app.main import app as flask_app
-from app.models import db, Property
+from app.models import db
 
 
 @pytest.fixture
 def app():
     flask_app.config["TESTING"] = True
-    flask_app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql:///property_db_test"
+    postgresql = "postgresql:///property_db_test"
+    flask_app.config["SQLALCHEMY_DATABASE_URI"] = postgresql
 
     with flask_app.app_context():
         # Drop and recreate all tables before each test

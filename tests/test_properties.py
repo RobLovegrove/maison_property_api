@@ -21,7 +21,8 @@ def test_create_property(client, sample_property):
     # Verify property was created
     get_response = client.get(f'/api/properties/{response.json["id"]}')
     assert get_response.status_code == 200
-    assert get_response.json["basic_info"]["address"] == sample_property["address"]
+    addr = get_response.json["basic_info"]["address"]
+    assert addr == sample_property["address"]
 
 
 def test_get_property_detail(client, sample_property):
@@ -37,7 +38,8 @@ def test_get_property_detail(client, sample_property):
     # Get property details
     response = client.get(f"/api/properties/{property_id}")
     assert response.status_code == 200
-    assert response.json["basic_info"]["address"] == sample_property["address"]
+    addr = response.json["basic_info"]["address"]
+    assert addr == sample_property["address"]
     assert response.json["description"] == sample_property["description"]
     assert response.json["key_features"] == sample_property["key_features"]
 

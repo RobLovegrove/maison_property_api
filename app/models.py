@@ -21,7 +21,7 @@ class Property(db.Model):
     additional_image_urls: List[str]
     floorplan_url: str
     ownership_type: str
-    leasehold_years_remaining: int
+    leasehold_remaining: int
     property_age: str
     key_features: List[str]
     council_tax_band: str
@@ -50,7 +50,7 @@ class Property(db.Model):
     ownership_type = db.Column(
         db.String(50), nullable=False
     )  # Required - freehold/leasehold is important
-    leasehold_years_remaining = db.Column(
+    leasehold_remaining = db.Column(
         db.Integer, nullable=True
     )  # Optional - only for leaseholds
     property_age = db.Column(

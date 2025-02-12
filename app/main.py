@@ -1,11 +1,13 @@
-from flask import Flask, jsonify, request, abort
+from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flask_migrate import Migrate
 from app.models import db, Property
 from app.config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
 db.init_app(app)
+migrate = Migrate(app, db)
 CORS(
     app,
     resources={
@@ -44,7 +46,7 @@ def validate_property_data(data, required=True):
     optional_fields = {
         "additional_image_urls": list,
         "floorplan_url": str,
-        "leasehold_years_remaining": int,
+        "leasehold_remaining": int,
         "property_age": str,
     }
 
@@ -55,12 +57,16 @@ def validate_property_data(data, required=True):
         if required and field not in data:
             errors.append(f"Missing required field: {field}")
         elif field in data and not isinstance(data[field], field_type):
-            errors.append(f"Invalid type for {field}: expected {field_type.__name__}")
+            errors.append(
+                f"Invalid type for {field}: expected {field_type.__name__}"
+            )
 
     # Validate optional fields if present
     for field, field_type in optional_fields.items():
         if field in data and not isinstance(data[field], field_type):
-            errors.append(f"Invalid type for {field}: expected {field_type.__name__}")
+            errors.append(
+                f"Invalid type for {field}: expected {field_type.__name__}"
+            )
 
     return errors
 
@@ -137,7 +143,7 @@ def get_property(property_id):
         },
         "property_details": {
             "ownership_type": property_item.ownership_type,
-            "leasehold_years_remaining": property_item.leasehold_years_remaining,
+            "leasehold_remaining": property_item.leasehold_remaining,
             "property_age": property_item.property_age,
             "council_tax_band": property_item.council_tax_band,
         },
@@ -167,13 +173,19 @@ def create_property():
         db.session.commit()
         return (
             jsonify(
-                {"message": "Property created successfully", "id": new_property.id}
+                {
+                    "message": "Property created successfully",
+                    "id": new_property.id,
+                }
             ),
             201,
         )
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "Failed to create property", "details": str(e)}), 500
+        return (
+            jsonify({"error": "Failed to create property", "details": str(e)}),
+            500,
+        )
 
 
 @app.route("/api/properties/<int:property_id>", methods=["PUT"])
@@ -201,7 +213,10 @@ def update_property(property_id):
         return jsonify({"message": "Property updated successfully"})
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "Failed to update property", "details": str(e)}), 500
+        return (
+            jsonify({"error": "Failed to update property", "details": str(e)}),
+            500,
+        )
 
 
 @app.route("/api/properties/<int:property_id>", methods=["DELETE"])
@@ -216,7 +231,10 @@ def delete_property(property_id):
         return jsonify({"message": "Property deleted successfully"})
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "Failed to delete property", "details": str(e)}), 500
+        return (
+            jsonify({"error": "Failed to delete property", "details": str(e)}),
+            500,
+        )
 
 
 if __name__ == "__main__":

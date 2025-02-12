@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from app.main import app
 from app.models import db, Property
 
@@ -33,7 +35,7 @@ SAMPLE_PROPERTIES = [
             "Close to outstanding schools",
             "Excellent transport links",
             "Bay windows with period features",
-            "Modern integrated appliances"
+            "Modern integrated appliances",
         ],
         council_tax_band="D",
         additional_image_urls=[
@@ -41,11 +43,11 @@ SAMPLE_PROPERTIES = [
             "https://sample-images.com/property1-living.jpg",
             "https://sample-images.com/property1-garden.jpg",
             "https://sample-images.com/property1-bathroom.jpg",
-            "https://sample-images.com/property1-bedroom1.jpg"
+            "https://sample-images.com/property1-bedroom1.jpg",
         ],
         floorplan_url="https://sample-images.com/property1-floorplan.jpg",
-        leasehold_years_remaining=None,
-        property_age="Built circa 1890"
+        leasehold_remaining=125,
+        property_age="Built circa 1890",
     ),
     Property(
         price=250000,
@@ -74,31 +76,35 @@ SAMPLE_PROPERTIES = [
             "24-hour concierge",
             "En-suite to master bedroom",
             "High-end appliances",
-            "Secure entry system"
+            "Secure entry system",
         ],
         council_tax_band="C",
         additional_image_urls=[
             "https://sample-images.com/property2-kitchen.jpg",
             "https://sample-images.com/property2-living.jpg",
-            "https://sample-images.com/property2-bedroom.jpg"
+            "https://sample-images.com/property2-bedroom.jpg",
         ],
         floorplan_url="https://sample-images.com/property2-floorplan.jpg",
-        leasehold_years_remaining=120,
-        property_age="Built in 2015"
-    )
+        leasehold_remaining=None,
+        property_age="Built in 2015",
+    ),
 ]
+
 
 def seed_database():
     with app.app_context():
         # Clear existing data
         Property.query.delete()
-        
+
         # Add sample properties
         for property_item in SAMPLE_PROPERTIES:
             db.session.add(property_item)
-        
+
         db.session.commit()
         print("Database seeded successfully!")
 
+
 if __name__ == "__main__":
-    seed_database() 
+    with app.app_context():
+        db.create_all()
+        seed_database()
