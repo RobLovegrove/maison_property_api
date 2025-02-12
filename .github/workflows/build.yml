@@ -3,12 +3,10 @@ name: Build
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   format:
-    name: Code Formatting
+    name: Format Code
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -36,7 +34,7 @@ jobs:
           fi
 
   lint:
-    name: Code Quality
+    name: python-formatting
     needs: format
     runs-on: ubuntu-latest
     steps:
