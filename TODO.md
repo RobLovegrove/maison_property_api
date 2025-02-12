@@ -7,6 +7,8 @@
    - [✓] Add SQLAlchemy ORM
    - [✓] Migrate sample data to database
    - [✓] Update endpoints to use database
+   - [✓] Enhance property model with detailed fields
+   - [✓] Set up automatic database migrations
 
 2. Property Management Endpoints
    - [ ] Add POST endpoint for creating properties

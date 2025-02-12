@@ -1,6 +1,6 @@
-# Property Listings API
+# MaiSON Property API
 
-A Flask-based REST API for managing real estate properties.
+A Flask-based REST API powering the MaiSON real estate platform.
 
 ## Setup
 
@@ -13,7 +13,7 @@ A Flask-based REST API for managing real estate properties.
 
 1. Clone the repository
 ```bash
-git clone [repository-url] properties_api
+git clone git@github.com:RobLovegrove/maison_property_api.git properties_api
 cd properties_api
 ```
 
@@ -75,47 +75,45 @@ SELECT address, price FROM properties WHERE bedrooms > 2;
 SELECT property_type, COUNT(*) FROM properties GROUP BY property_type;
 ```
 
+### Database Migrations
+To manage database schema changes:
+
+1. Initialize migrations (first time only):
+```bash
+export FLASK_APP=app/manage.py
+flask db init
+```
+
+2. Create a new migration when models change:
+```bash
+flask db migrate -m "Description of changes"
+```
+
+3. Apply pending migrations:
+```bash
+flask db upgrade
+```
+
+4. Rollback migrations if needed:
+```bash
+flask db downgrade
+```
+
 ## API Endpoints
 
 ### Properties
 - `GET /api/properties` - List all properties
+  - Returns basic property information (id, price, address, rooms, etc.)
   - Query parameters:
     - `property_type`: Filter by property type
     - `min_price`: Minimum price
     - `max_price`: Maximum price
     - `min_beds`: Minimum number of bedrooms
-- `GET /api/properties/<id>` - Get specific property
-
-## Development
-
-### Project Structure
-```
-/
-├── app/
-│   ├── main.py          # Main application file
-│   ├── models.py        # Database models
-│   ├── config.py        # Configuration
-│   └── requirements.txt # Python dependencies
-├── scripts/
-│   ├── run_local.sh     # Local development server script
-│   └── seed_database.py # Database seeding script
-├── Dockerfile           # Container configuration
-└── cloudbuild.yaml      # Google Cloud Build configuration
-```
-
-### Docker Support
-Build the container:
-```bash
-docker build -t property-api .
-```
-
-Run the container:
-```bash
-docker run -p 8080:8080 property-api
-```
-
-## Contributing
-[Add contribution guidelines]
-
-## License
-[Add license information]
+- `GET /api/properties/<id>` - Get detailed property information
+  - Returns:
+    - Basic information (price, address, rooms, etc.)
+    - Full property description
+    - All property images and floorplan
+    - Property details (ownership type, age, EPC rating, etc.)
+    - Key features
+    - Council tax information
