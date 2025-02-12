@@ -2,11 +2,12 @@ import pytest
 from app.main import app as flask_app
 from app.models import db, Property
 
+
 @pytest.fixture
 def app():
-    flask_app.config['TESTING'] = True
-    flask_app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql:///property_db_test'
-    
+    flask_app.config["TESTING"] = True
+    flask_app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql:///property_db_test"
+
     with flask_app.app_context():
         # Drop and recreate all tables before each test
         db.drop_all()
@@ -16,9 +17,11 @@ def app():
         db.session.remove()
         db.drop_all()
 
+
 @pytest.fixture
 def client(app):
     return app.test_client()
+
 
 @pytest.fixture
 def sample_property():
@@ -35,6 +38,6 @@ def sample_property():
         "description": "A test property description",
         "ownership_type": "freehold",
         "key_features": ["Feature 1", "Feature 2"],
-        "council_tax_band": "D"
+        "council_tax_band": "D",
     }
-    return property_data 
+    return property_data
