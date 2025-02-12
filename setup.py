@@ -1,10 +1,14 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="maison-property-api",
+    name="maison_property_api",
     version="0.1",
     packages=find_packages(),
     install_requires=[
-        # Your requirements will be read from requirements.txt
+        "flask",
+        "flask-sqlalchemy",
+        "flask-migrate",
+        "flask-cors",
+        "python-dotenv",
     ],
 ) 
