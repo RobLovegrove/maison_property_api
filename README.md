@@ -143,3 +143,32 @@ flask db downgrade
   - All fields are optional for updates
 - `DELETE /api/properties/<id>` - Delete a property
   - Removes the property from the database
+
+## Development
+
+### Code Style
+This project uses the `black` code formatter. To format code:
+```bash
+black app/ tests/
+```
+
+### Continuous Integration
+The following checks run on all pull requests:
+- Code formatting (black)
+- Unit tests (pytest)
+
+### Running Tests
+```bash
+# Create test database (first time only)
+createdb property_db_test
+
+# Run tests
+./scripts/run_tests.sh
+```
+
+Test coverage includes:
+- GET /api/properties endpoint
+- GET /api/properties/<id> endpoint
+- POST /api/properties endpoint with validation
+- PUT /api/properties/<id> endpoint
+- DELETE /api/properties/<id> endpoint

@@ -54,7 +54,9 @@
 - [ ] Add property comparison feature
 
 ## Technical Debt & Maintenance
-- [ ] Add comprehensive test suite
+- [✓] Add comprehensive test suite for API endpoints
+- [ ] Add integration tests
+- [ ] Add performance tests
 - [ ] Set up CI/CD pipeline
 - [ ] Add monitoring and alerting
 - [ ] Add backup strategy
