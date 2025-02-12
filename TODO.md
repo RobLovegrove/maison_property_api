@@ -11,10 +11,10 @@
    - [✓] Set up automatic database migrations
 
 2. Property Management Endpoints
-   - [ ] Add POST endpoint for creating properties
-   - [ ] Add PUT endpoint for updating properties
-   - [ ] Add DELETE endpoint for removing properties
-   - [ ] Add validation for property data
+   - [✓] Add POST endpoint for creating properties
+   - [✓] Add PUT endpoint for updating properties
+   - [✓] Add DELETE endpoint for removing properties
+   - [✓] Add validation for property data
    - [ ] Add authentication for management endpoints
 
 3. Image Handling

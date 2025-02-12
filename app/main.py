@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, abort
 from flask_cors import CORS
 from app.models import db, Property
 from app.config import Config
@@ -18,6 +18,47 @@ CORS(app, resources={
 # Create tables
 with app.app_context():
     db.create_all()
+
+def validate_property_data(data, required=True):
+    """Validate property data from request"""
+    required_fields = {
+        'price': int,
+        'address': str,
+        'bedrooms': int,
+        'bathrooms': int,
+        'reception_rooms': int,
+        'square_footage': float,
+        'property_type': str,
+        'epc_rating': str,
+        'main_image_url': str,
+        'description': str,
+        'ownership_type': str,
+        'key_features': list,
+        'council_tax_band': str
+    }
+    
+    optional_fields = {
+        'additional_image_urls': list,
+        'floorplan_url': str,
+        'leasehold_years_remaining': int,
+        'property_age': str
+    }
+
+    errors = []
+    
+    # Validate required fields
+    for field, field_type in required_fields.items():
+        if required and field not in data:
+            errors.append(f"Missing required field: {field}")
+        elif field in data and not isinstance(data[field], field_type):
+            errors.append(f"Invalid type for {field}: expected {field_type.__name__}")
+    
+    # Validate optional fields if present
+    for field, field_type in optional_fields.items():
+        if field in data and not isinstance(data[field], field_type):
+            errors.append(f"Invalid type for {field}: expected {field_type.__name__}")
+    
+    return errors
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -92,6 +133,70 @@ def get_property(property_id):
     }
     
     return jsonify(response)
+
+@app.route('/api/properties', methods=['POST'])
+def create_property():
+    if not request.is_json:
+        return jsonify({"error": "Content-Type must be application/json"}), 400
+    
+    data = request.get_json()
+    
+    # Validate request data
+    errors = validate_property_data(data)
+    if errors:
+        return jsonify({"errors": errors}), 400
+    
+    # Create new property
+    new_property = Property(**data)
+    
+    try:
+        db.session.add(new_property)
+        db.session.commit()
+        return jsonify({"message": "Property created successfully", "id": new_property.id}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to create property", "details": str(e)}), 500
+
+@app.route('/api/properties/<int:property_id>', methods=['PUT'])
+def update_property(property_id):
+    if not request.is_json:
+        return jsonify({"error": "Content-Type must be application/json"}), 400
+    
+    property_item = Property.query.get(property_id)
+    if property_item is None:
+        return jsonify({"error": "Property not found"}), 404
+    
+    data = request.get_json()
+    
+    # Validate request data (allow partial updates)
+    errors = validate_property_data(data, required=False)
+    if errors:
+        return jsonify({"errors": errors}), 400
+    
+    try:
+        # Update property attributes
+        for key, value in data.items():
+            setattr(property_item, key, value)
+        
+        db.session.commit()
+        return jsonify({"message": "Property updated successfully"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to update property", "details": str(e)}), 500
+
+@app.route('/api/properties/<int:property_id>', methods=['DELETE'])
+def delete_property(property_id):
+    property_item = Property.query.get(property_id)
+    if property_item is None:
+        return jsonify({"error": "Property not found"}), 404
+    
+    try:
+        db.session.delete(property_item)
+        db.session.commit()
+        return jsonify({"message": "Property deleted successfully"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to delete property", "details": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080) 

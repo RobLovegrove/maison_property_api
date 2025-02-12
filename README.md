@@ -117,3 +117,29 @@ flask db downgrade
     - Property details (ownership type, age, EPC rating, etc.)
     - Key features
     - Council tax information
+- `POST /api/properties` - Create a new property
+  - Requires JSON body with property details
+  - Required fields:
+    - price (integer)
+    - address (string)
+    - bedrooms (integer)
+    - bathrooms (integer)
+    - reception_rooms (integer)
+    - square_footage (float)
+    - property_type (string)
+    - epc_rating (string)
+    - main_image_url (string)
+    - description (string)
+    - ownership_type (string)
+    - key_features (array)
+    - council_tax_band (string)
+  - Optional fields:
+    - additional_image_urls (array)
+    - floorplan_url (string)
+    - leasehold_years_remaining (integer)
+    - property_age (string)
+- `PUT /api/properties/<id>` - Update an existing property
+  - Requires JSON body with fields to update
+  - All fields are optional for updates
+- `DELETE /api/properties/<id>` - Delete a property
+  - Removes the property from the database
