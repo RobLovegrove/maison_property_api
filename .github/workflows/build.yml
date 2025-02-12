@@ -47,4 +47,4 @@ jobs:
       - name: Install Flask
         run: pip install Flask
       - name: Run tests
-        run: pytest app_test.py
+        run: pytest
