@@ -7,7 +7,58 @@ on:
     branches: [ main ]
 
 jobs:
+  format:
+    name: Code Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black==24.1.1
+
+      - name: Format code with black
+        run: |
+          black app/ tests/
+
+      - name: Check if formatting created any changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Code formatting created changes. Please run 'black app/ tests/' locally and commit the changes."
+            git diff
+            exit 1
+          fi
+
+  lint:
+    name: Code Quality
+    needs: format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black==24.1.1
+
+      - name: Check code formatting
+        run: |
+          black --check app/ tests/
+
   test:
+    name: Unit Tests
+    needs: lint
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -24,32 +75,20 @@ jobs:
           --health-retries 5
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.9'
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r app/requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r app/requirements.txt
 
-    - name: Format code with black
-      run: |
-        black app/ tests/
-
-    - name: Check if formatting created any changes
-      run: |
-        if [ -n "$(git status --porcelain)" ]; then
-          echo "Code formatting created changes. Please run 'black app/ tests/' locally and commit the changes."
-          git diff
-          exit 1
-        fi
-
-    - name: Run tests
-      env:
-        SQLALCHEMY_DATABASE_URI: postgresql://postgres:postgres@localhost:5432/property_db_test
-      run: |
-        pytest -v tests/ 
+      - name: Run tests
+        env:
+          SQLALCHEMY_DATABASE_URI: postgresql://postgres:postgres@localhost:5432/property_db_test
+        run: |
+          pytest -v tests/ 
