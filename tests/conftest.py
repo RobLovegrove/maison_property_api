@@ -1,37 +1,44 @@
 import pytest
-from app.main import app as flask_app
-from app.models import db
+from app import create_app, db
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def app():
-    flask_app.config["SQLALCHEMY_DATABASE_URI"] = (
+    """Create application for the tests."""
+    _app = create_app()
+    _app.config["TESTING"] = True
+    _app.config["SQLALCHEMY_DATABASE_URI"] = (
         "postgresql://postgres:postgres@localhost:5432/maison_test"
     )
-    flask_app.config["TESTING"] = True
-    return flask_app
+    return _app
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def client(app):
+    """Test client for making requests."""
     return app.test_client()
 
 
-@pytest.fixture
-def init_database():
-    # Setup - create tables
-    db.create_all()
+@pytest.fixture(scope="function")
+def app_context(app):
+    """Create fresh database tables."""
+    with app.app_context():
+        db.create_all()
+        yield
+        db.session.remove()
+        db.drop_all()
 
-    # Test runs here
-    yield
 
-    # Teardown - clear tables
-    db.session.remove()
-    db.drop_all()
+@pytest.fixture(scope="function")
+def session(app_context, app):
+    """Database session for tests."""
+    with app.app_context():
+        yield db.session
 
 
 @pytest.fixture
 def sample_property():
+    """Sample property data for tests."""
     property_data = {
         "price": 350000,
         "address": "123 Test Street, London, SW1 1AA",

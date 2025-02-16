@@ -24,28 +24,27 @@ class Property(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     price: Mapped[int]
     status: Mapped[str]
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(
+        default=datetime.now(UTC), index=True  # Add index for performance
+    )
     last_updated: Mapped[datetime] = mapped_column(
         default=datetime.now(UTC), onupdate=datetime.now(UTC)
     )
     address: Mapped["Address"] = relationship(
-        back_populates="property",
-        uselist=False
+        back_populates="property", uselist=False, cascade="all, delete-orphan"
     )
     specs: Mapped["PropertySpecs"] = relationship(
-        back_populates="property",
-        uselist=False
+        back_populates="property", uselist=False, cascade="all, delete-orphan"
     )
     features: Mapped["PropertyFeatures"] = relationship(
-        back_populates="property", uselist=False
+        back_populates="property", uselist=False, cascade="all, delete-orphan"
     )
     media: Mapped[List["PropertyMedia"]] = relationship(
-        back_populates="property")
+        back_populates="property", cascade="all, delete-orphan"
+    )
     description: Mapped[str]
     main_image_url: Mapped[Optional[str]]  # For list view
-    additional_image_urls: Mapped[Optional[List[str]]] = mapped_column(
-        db.JSON
-    )
+    additional_image_urls: Mapped[Optional[List[str]]] = mapped_column(db.JSON)
     floorplan_url: Mapped[Optional[str]]
     ownership_type: Mapped[str]
     leasehold_remaining: Mapped[Optional[int]]

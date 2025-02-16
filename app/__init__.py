@@ -12,12 +12,20 @@ migrate = Migrate()
 
 
 def create_app():
-    app = Flask(__name__)
-    app.config.from_object(Config)
+    flask_app = Flask(__name__)
+    flask_app.config.from_object(Config)
 
     # Initialize Flask extensions
-    db.init_app(app)
-    migrate.init_app(app, db)
-    CORS(app)
+    db.init_app(flask_app)
+    migrate.init_app(flask_app, db)
+    CORS(flask_app)
 
-    return app
+    # Register blueprints/routes
+    from app.main import bp
+    flask_app.register_blueprint(bp)
+
+    return flask_app
+
+
+# Create the app instance
+app = create_app()

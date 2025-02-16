@@ -1,11 +1,7 @@
-from flask_migrate import Migrate
-from app.main import app
-from app.models import db
+from flask.cli import FlaskGroup
+from app import app
 
-migrate = Migrate(app, db)
+cli = FlaskGroup(app)
 
 if __name__ == "__main__":
-    from flask.cli import FlaskGroup
-
-    cli = FlaskGroup(app)
     cli()

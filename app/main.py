@@ -1,32 +1,14 @@
-from flask import jsonify, request
-from flask_cors import CORS
-from flask_migrate import Migrate
-from app import create_app, db
+from flask import Blueprint, jsonify, request
+from app import db
 from app.models import (
     Property,
     Address,
     PropertySpecs,
     PropertyFeatures,
-    PropertyMedia
+    PropertyMedia,
 )
 
-app = create_app()
-migrate = Migrate(app, db)
-CORS(
-    app,
-    resources={
-        r"/api/*": {
-            "origins": [
-                "https://maison-frontend.azurecontainerapps.io",
-                "http://localhost:5137",  # for local development
-            ]
-        }
-    },
-)
-
-# Create tables
-with app.app_context():
-    db.create_all()
+bp = Blueprint('main', __name__)
 
 
 def validate_property_data(data):
@@ -71,12 +53,12 @@ def validate_property_data(data):
     return errors
 
 
-@app.route("/health", methods=["GET"])
+@bp.route("/health", methods=["GET"])
 def health_check():
     return jsonify({"status": "healthy"})
 
 
-@app.route("/api/properties", methods=["GET"])
+@bp.route("/api/properties", methods=["GET"])
 def get_properties():
     # Filters
     min_price = request.args.get("min_price", type=int)
@@ -93,12 +75,18 @@ def get_properties():
     ownership_type = request.args.get("ownership_type")
     postcode_area = request.args.get("postcode_area")
 
-    # Build query with default sort (newest first)
+    # Build query with explicit ordering
     query = (
         Property.query.join(PropertySpecs)
         .join(Address)
         .join(PropertyFeatures)
-        .order_by(Property.created_at.desc())
+        .order_by(Property.created_at.desc(), Property.id.desc())
+    )
+
+    # Debug query
+    print("\nSQL Query:")
+    print(
+        query.statement.compile(compile_kwargs={"literal_binds": True})
     )
 
     # Apply filters
@@ -114,7 +102,8 @@ def get_properties():
         query = query.filter(Address.city.ilike(f"%{city}%"))
     if min_square_footage:
         query = query.filter(
-            PropertySpecs.square_footage >= min_square_footage)
+            PropertySpecs.square_footage >= min_square_footage
+        )
     if bathrooms:
         query = query.filter(PropertySpecs.bathrooms >= bathrooms)
     if reception_rooms:
@@ -132,9 +121,7 @@ def get_properties():
     if ownership_type:
         query = query.filter(Property.ownership_type == ownership_type)
     if postcode_area:
-        query = query.filter(
-            Address.postcode.ilike(f"{postcode_area}%")
-        )
+        query = query.filter(Address.postcode.ilike(f"{postcode_area}%"))
 
     properties = query.all()
     return jsonify(
@@ -144,6 +131,7 @@ def get_properties():
                 "price": p.price,
                 "status": p.status,
                 "created_at": p.created_at.isoformat(),
+                "description": p.description,
                 "address": {
                     "house_number": p.address.house_number,
                     "street": p.address.street,
@@ -171,7 +159,7 @@ def get_properties():
     )
 
 
-@app.route("/api/properties/<int:property_id>", methods=["GET"])
+@bp.route("/api/properties/<int:property_id>", methods=["GET"])
 def get_property(property_id):
     property_item = Property.query.get(property_id)
     if property_item is None:
@@ -211,7 +199,7 @@ def get_property(property_id):
     return jsonify(response)
 
 
-@app.route("/api/properties", methods=["POST"])
+@bp.route("/api/properties", methods=["POST"])
 def create_property():
     data = request.get_json()
 
@@ -284,7 +272,7 @@ def create_property():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/properties/<int:property_id>", methods=["PUT"])
+@bp.route("/api/properties/<int:property_id>", methods=["PUT"])
 def update_property(property_id):
     property_item = Property.query.get(property_id)
     if property_item is None:
@@ -318,11 +306,7 @@ def update_property(property_id):
             features = data["features"]
             if property_item.features:
                 for key, value in features.items():
-                    setattr(
-                        property_item.features,
-                        key,
-                        value
-                    )
+                    setattr(property_item.features, key, value)
 
         db.session.commit()
         return jsonify({"message": "Property updated successfully"})
@@ -331,7 +315,7 @@ def update_property(property_id):
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/properties/<int:property_id>", methods=["DELETE"])
+@bp.route("/api/properties/<int:property_id>", methods=["DELETE"])
 def delete_property(property_id):
     property_item = Property.query.get(property_id)
     if property_item is None:
@@ -345,7 +329,3 @@ def delete_property(property_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
