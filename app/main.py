@@ -1,20 +1,24 @@
-from flask import Flask, jsonify, request
+from flask import jsonify, request
 from flask_cors import CORS
 from flask_migrate import Migrate
-from app.models import db, Property
-from app.config import Config
+from app import create_app, db
+from app.models import (
+    Property,
+    Address,
+    PropertySpecs,
+    PropertyFeatures,
+    PropertyMedia
+)
 
-app = Flask(__name__)
-app.config.from_object(Config)
-db.init_app(app)
+app = create_app()
 migrate = Migrate(app, db)
 CORS(
     app,
     resources={
         r"/api/*": {
             "origins": [
-                "https://realestate-website.com",
-                "http://localhost:3000",  # for local development
+                "https://maison-frontend.azurecontainerapps.io",
+                "http://localhost:5137",  # for local development
             ]
         }
     },
@@ -25,48 +29,44 @@ with app.app_context():
     db.create_all()
 
 
-def validate_property_data(data, required=True):
+def validate_property_data(data):
     """Validate property data from request"""
-    required_fields = {
-        "price": int,
-        "address": str,
-        "bedrooms": int,
-        "bathrooms": int,
-        "reception_rooms": int,
-        "square_footage": float,
-        "property_type": str,
-        "epc_rating": str,
-        "main_image_url": str,
-        "description": str,
-        "ownership_type": str,
-        "key_features": list,
-        "council_tax_band": str,
-    }
-
-    optional_fields = {
-        "additional_image_urls": list,
-        "floorplan_url": str,
-        "leasehold_remaining": int,
-        "property_age": str,
-    }
-
     errors = []
 
-    # Validate required fields
-    for field, field_type in required_fields.items():
-        if required and field not in data:
-            errors.append(f"Missing required field: {field}")
-        elif field in data and not isinstance(data[field], field_type):
-            errors.append(
-                f"Invalid type for {field}: expected {field_type.__name__}"
-            )
+    # Validate main property data
+    if "price" not in data or not isinstance(data["price"], int):
+        errors.append("Price must be a number")
+    if "description" not in data or not isinstance(data["description"], str):
+        errors.append("Description is required")
 
-    # Validate optional fields if present
-    for field, field_type in optional_fields.items():
-        if field in data and not isinstance(data[field], field_type):
-            errors.append(
-                f"Invalid type for {field}: expected {field_type.__name__}"
-            )
+    # Validate address
+    if "address" not in data:
+        errors.append("Address is required")
+    else:
+        addr = data["address"]
+        required_addr_fields = ["house_number", "street", "city", "postcode"]
+        for field in required_addr_fields:
+            if field not in addr:
+                errors.append(f"Address {field} is required")
+
+    # Validate specs
+    if "specs" not in data:
+        errors.append("Property specifications are required")
+    else:
+        specs = data["specs"]
+        required_specs = {
+            "bedrooms": int,
+            "bathrooms": int,
+            "reception_rooms": int,
+            "square_footage": float,
+            "property_type": str,
+            "epc_rating": str,
+        }
+        for field, field_type in required_specs.items():
+            if field not in specs:
+                errors.append(f"Spec {field} is required")
+            elif not isinstance(specs[field], field_type):
+                errors.append(f"{field} must be a {field_type.__name__}")
 
     return errors
 
@@ -78,38 +78,93 @@ def health_check():
 
 @app.route("/api/properties", methods=["GET"])
 def get_properties():
-    property_type = request.args.get("property_type")
+    # Filters
     min_price = request.args.get("min_price", type=int)
     max_price = request.args.get("max_price", type=int)
-    min_beds = request.args.get("min_beds", type=int)
+    bedrooms = request.args.get("bedrooms", type=int)
+    property_type = request.args.get("property_type")
+    city = request.args.get("city")
+    min_square_footage = request.args.get("min_square_footage", type=float)
+    bathrooms = request.args.get("bathrooms", type=int)
+    reception_rooms = request.args.get("reception_rooms", type=int)
+    has_garden = request.args.get("has_garden", type=bool)
+    has_garage = request.args.get("has_garage", type=bool)
+    epc_rating = request.args.get("epc_rating")
+    ownership_type = request.args.get("ownership_type")
+    postcode_area = request.args.get("postcode_area")
 
-    query = Property.query
+    # Build query with default sort (newest first)
+    query = (
+        Property.query.join(PropertySpecs)
+        .join(Address)
+        .join(PropertyFeatures)
+        .order_by(Property.created_at.desc())
+    )
 
-    if property_type:
-        query = query.filter(Property.property_type == property_type)
+    # Apply filters
     if min_price:
         query = query.filter(Property.price >= min_price)
     if max_price:
         query = query.filter(Property.price <= max_price)
-    if min_beds:
-        query = query.filter(Property.bedrooms >= min_beds)
+    if bedrooms:
+        query = query.filter(PropertySpecs.bedrooms >= bedrooms)
+    if property_type:
+        query = query.filter(PropertySpecs.property_type == property_type)
+    if city:
+        query = query.filter(Address.city.ilike(f"%{city}%"))
+    if min_square_footage:
+        query = query.filter(
+            PropertySpecs.square_footage >= min_square_footage)
+    if bathrooms:
+        query = query.filter(PropertySpecs.bathrooms >= bathrooms)
+    if reception_rooms:
+        query = query.filter(PropertySpecs.reception_rooms >= reception_rooms)
+    if has_garden is not None:
+        query = query.filter(
+            PropertyFeatures.has_garden == has_garden
+        )
+    if has_garage is not None:
+        query = query.filter(
+            PropertyFeatures.has_garage == has_garage
+        )
+    if epc_rating:
+        query = query.filter(PropertySpecs.epc_rating == epc_rating)
+    if ownership_type:
+        query = query.filter(Property.ownership_type == ownership_type)
+    if postcode_area:
+        query = query.filter(
+            Address.postcode.ilike(f"{postcode_area}%")
+        )
 
     properties = query.all()
-
-    # Return only basic property information for list view
     return jsonify(
         [
             {
                 "id": p.id,
                 "price": p.price,
-                "address": p.address,
-                "bedrooms": p.bedrooms,
-                "bathrooms": p.bathrooms,
-                "reception_rooms": p.reception_rooms,
-                "square_footage": p.square_footage,
-                "property_type": p.property_type,
-                "epc_rating": p.epc_rating,
-                "main_image_url": p.main_image_url,
+                "status": p.status,
+                "created_at": p.created_at.isoformat(),
+                "address": {
+                    "house_number": p.address.house_number,
+                    "street": p.address.street,
+                    "city": p.address.city,
+                    "postcode": p.address.postcode,
+                },
+                "specs": {
+                    "bedrooms": p.specs.bedrooms,
+                    "bathrooms": p.specs.bathrooms,
+                    "property_type": p.specs.property_type,
+                    "square_footage": p.specs.square_footage,
+                },
+                "features": {
+                    "has_garden": (
+                        p.features.has_garden if p.features else False
+                    ),
+                    "parking_spaces": (
+                        p.features.parking_spaces if p.features else 0
+                    ),
+                },
+                "main_image": p.main_image_url,
             }
             for p in properties
         ]
@@ -122,101 +177,158 @@ def get_property(property_id):
     if property_item is None:
         return jsonify({"error": "Property not found"}), 404
 
-    # Return detailed property information for single property view
     response = {
         "id": property_item.id,
-        "basic_info": {
-            "price": property_item.price,
-            "address": property_item.address,
-            "property_type": property_item.property_type,
-            "bedrooms": property_item.bedrooms,
-            "bathrooms": property_item.bathrooms,
-            "reception_rooms": property_item.reception_rooms,
-            "square_footage": property_item.square_footage,
-            "epc_rating": property_item.epc_rating,
-        },
+        "price": property_item.price,
+        "status": property_item.status,
         "description": property_item.description,
+        "address": {
+            "house_number": property_item.address.house_number,
+            "street": property_item.address.street,
+            "city": property_item.address.city,
+            "postcode": property_item.address.postcode,
+        },
+        "specs": {
+            "bedrooms": property_item.specs.bedrooms,
+            "bathrooms": property_item.specs.bathrooms,
+            "reception_rooms": property_item.specs.reception_rooms,
+            "square_footage": property_item.specs.square_footage,
+            "property_type": property_item.specs.property_type,
+            "epc_rating": property_item.specs.epc_rating,
+        },
+        "features": {
+            "has_garden": property_item.features.has_garden,
+            "garden_size": property_item.features.garden_size,
+            "parking_spaces": property_item.features.parking_spaces,
+            "has_garage": property_item.features.has_garage,
+        },
         "images": {
-            "main_image": property_item.main_image_url,
-            "additional_images": property_item.additional_image_urls,
+            "main": property_item.main_image_url,
+            "additional": property_item.additional_image_urls or [],
             "floorplan": property_item.floorplan_url,
         },
-        "property_details": {
-            "ownership_type": property_item.ownership_type,
-            "leasehold_remaining": property_item.leasehold_remaining,
-            "property_age": property_item.property_age,
-            "council_tax_band": property_item.council_tax_band,
-        },
-        "key_features": property_item.key_features,
     }
-
     return jsonify(response)
 
 
 @app.route("/api/properties", methods=["POST"])
 def create_property():
-    if not request.is_json:
-        return jsonify({"error": "Content-Type must be application/json"}), 400
-
     data = request.get_json()
 
-    # Validate request data
+    # Validate input data
     errors = validate_property_data(data)
     if errors:
         return jsonify({"errors": errors}), 400
 
-    # Create new property
-    new_property = Property(**data)
-
     try:
-        db.session.add(new_property)
-        db.session.commit()
-        return (
-            jsonify(
-                {
-                    "message": "Property created successfully",
-                    "id": new_property.id,
-                }
-            ),
-            201,
+        # Create main property
+        property = Property(
+            price=data["price"],
+            status="for_sale",
+            description=data["description"],
+            ownership_type=data.get("ownership_type", "freehold"),
+            key_features=data.get("key_features", []),
+            council_tax_band=data.get("council_tax_band", "Unknown"),
         )
+        db.session.add(property)
+
+        # Create address
+        address = Address(
+            property=property,
+            house_number=data["address"]["house_number"],
+            street=data["address"]["street"],
+            city=data["address"]["city"],
+            postcode=data["address"]["postcode"],
+        )
+        db.session.add(address)
+
+        # Create specs
+        specs = PropertySpecs(
+            property=property,
+            bedrooms=data["specs"]["bedrooms"],
+            bathrooms=data["specs"]["bathrooms"],
+            reception_rooms=data["specs"]["reception_rooms"],
+            square_footage=data["specs"]["square_footage"],
+            property_type=data["specs"]["property_type"],
+            epc_rating=data["specs"]["epc_rating"],
+        )
+        db.session.add(specs)
+
+        # Create features if provided
+        if "features" in data:
+            features = PropertyFeatures(
+                property=property,
+                has_garden=data["features"].get("has_garden", False),
+                garden_size=data["features"].get("garden_size"),
+                parking_spaces=data["features"].get("parking_spaces", 0),
+                has_garage=data["features"].get("has_garage", False),
+            )
+            db.session.add(features)
+
+        # Create media entries if provided
+        if "media" in data:
+            for image_data in data["media"]:
+                media = PropertyMedia(
+                    property=property,
+                    image_url=image_data["url"],
+                    is_main_image=image_data.get("is_main_image", False),
+                    image_type=image_data.get("type", "interior"),
+                )
+                db.session.add(media)
+
+        db.session.commit()
+        return jsonify({"id": property.id}), 201
+
     except Exception as e:
         db.session.rollback()
-        return (
-            jsonify({"error": "Failed to create property", "details": str(e)}),
-            500,
-        )
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/properties/<int:property_id>", methods=["PUT"])
 def update_property(property_id):
-    if not request.is_json:
-        return jsonify({"error": "Content-Type must be application/json"}), 400
-
     property_item = Property.query.get(property_id)
     if property_item is None:
         return jsonify({"error": "Property not found"}), 404
 
     data = request.get_json()
 
-    # Validate request data (allow partial updates)
-    errors = validate_property_data(data, required=False)
-    if errors:
-        return jsonify({"errors": errors}), 400
-
     try:
-        # Update property attributes
-        for key, value in data.items():
-            setattr(property_item, key, value)
+        # Update main property
+        if "price" in data:
+            property_item.price = data["price"]
+        if "description" in data:
+            property_item.description = data["description"]
+
+        # Update address
+        if "address" in data:
+            addr = data["address"]
+            if property_item.address:
+                for key, value in addr.items():
+                    setattr(property_item.address, key, value)
+
+        # Update specs
+        if "specs" in data:
+            specs = data["specs"]
+            if property_item.specs:
+                for key, value in specs.items():
+                    setattr(property_item.specs, key, value)
+
+        # Update features
+        if "features" in data:
+            features = data["features"]
+            if property_item.features:
+                for key, value in features.items():
+                    setattr(
+                        property_item.features,
+                        key,
+                        value
+                    )
 
         db.session.commit()
         return jsonify({"message": "Property updated successfully"})
     except Exception as e:
         db.session.rollback()
-        return (
-            jsonify({"error": "Failed to update property", "details": str(e)}),
-            500,
-        )
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/properties/<int:property_id>", methods=["DELETE"])
@@ -226,15 +338,13 @@ def delete_property(property_id):
         return jsonify({"error": "Property not found"}), 404
 
     try:
+        # SQLAlchemy will handle cascade deletes for related tables
         db.session.delete(property_item)
         db.session.commit()
         return jsonify({"message": "Property deleted successfully"})
     except Exception as e:
         db.session.rollback()
-        return (
-            jsonify({"error": "Failed to delete property", "details": str(e)}),
-            500,
-        )
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":

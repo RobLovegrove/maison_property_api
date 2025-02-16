@@ -19,7 +19,7 @@
 
 3. Image Handling
    - [ ] Set up cloud storage (e.g., Google Cloud Storage)
-   - [ ] Add image upload functionality
+   - [✓] Add image upload functionality
    - [ ] Add image resize/optimization
    - [ ] Add support for multiple property images
    - [ ] Add image deletion when property is deleted

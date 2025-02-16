@@ -172,3 +172,146 @@ Test coverage includes:
 - POST /api/properties endpoint with validation
 - PUT /api/properties/<id> endpoint
 - DELETE /api/properties/<id> endpoint
+
+## API Examples
+
+### List Properties
+```bash
+GET /api/properties?min_price=300000&bedrooms=3&city=London
+```
+Response:
+```json
+[
+    {
+        "id": 1,
+        "price": 350000,
+        "status": "for_sale",
+        "created_at": "2024-01-26T17:54:04.872288",
+        "address": {
+            "house_number": "123",
+            "street": "Test Street",
+            "city": "London",
+            "postcode": "SW1 1AA"
+        },
+        "specs": {
+            "bedrooms": 3,
+            "bathrooms": 2,
+            "property_type": "semi-detached",
+            "square_footage": 1200.0
+        },
+        "features": {
+            "has_garden": true,
+            "parking_spaces": 2
+        },
+        "main_image": "https://maison-property-images.azurewebsites.net/properties/modern-house-1.jpg"
+    }
+]
+```
+
+### Get Property Details
+```bash
+GET /api/properties/1
+```
+Response:
+```json
+{
+    "id": 1,
+    "price": 350000,
+    "status": "for_sale",
+    "description": "A lovely 3 bedroom property in London",
+    "address": {
+        "house_number": "123",
+        "street": "Test Street",
+        "city": "London",
+        "postcode": "SW1 1AA"
+    },
+    "specs": {
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "reception_rooms": 1,
+        "square_footage": 1200.0,
+        "property_type": "semi-detached",
+        "epc_rating": "B"
+    },
+    "features": {
+        "has_garden": true,
+        "garden_size": 100.0,
+        "parking_spaces": 2,
+        "has_garage": true
+    },
+    "images": {
+        "main": "https://maison-property-images.azurewebsites.net/properties/modern-house-1.jpg",
+        "additional": [
+            "https://maison-property-images.azurewebsites.net/properties/kitchen-1.jpg",
+            "https://maison-property-images.azurewebsites.net/properties/living-room-1.jpg"
+        ],
+        "floorplan": "https://maison-property-images.azurewebsites.net/floorplans/3-bed-house.pdf"
+    }
+}
+```
+
+### Create Property
+```bash
+POST /api/properties
+Content-Type: application/json
+
+{
+    "price": 350000,
+    "status": "for_sale",
+    "description": "A lovely property",
+    "address": {
+        "house_number": "123",
+        "street": "Test Street",
+        "city": "London",
+        "postcode": "SW1 1AA"
+    },
+    "specs": {
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "reception_rooms": 1,
+        "square_footage": 1200.0,
+        "property_type": "semi-detached",
+        "epc_rating": "B"
+    },
+    "features": {
+        "has_garden": true,
+        "garden_size": 100.0,
+        "parking_spaces": 2,
+        "has_garage": true
+    }
+}
+```
+Response:
+```json
+{
+    "id": 1
+}
+```
+
+### Update Property
+```bash
+PUT /api/properties/1
+Content-Type: application/json
+
+{
+    "price": 375000,
+    "description": "Updated description"
+}
+```
+Response:
+```json
+{
+    "message": "Property updated successfully"
+}
+```
+
+### Delete Property
+```bash
+DELETE /api/properties/1
+```
+Response:
+```json
+{
+    "message": "Property deleted successfully"
+}
+```
