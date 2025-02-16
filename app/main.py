@@ -1,4 +1,9 @@
-from flask import Blueprint, jsonify, request
+from flask import (
+    Blueprint,
+    jsonify,
+    request,
+    render_template_string,
+)
 from app import db
 from app.models import (
     Property,
@@ -7,6 +12,8 @@ from app.models import (
     PropertyFeatures,
     PropertyMedia,
 )
+import os
+import markdown2
 
 bp = Blueprint("main", __name__)
 
@@ -51,6 +58,77 @@ def validate_property_data(data):
                 errors.append(f"{field} must be a {field_type.__name__}")
 
     return errors
+
+
+@bp.route("/", methods=["GET"])
+def index():
+    """Return README.md content as HTML"""
+    # Get the project root directory
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    # Read README.md
+    with open(os.path.join(root_dir, "README.md"), "r") as f:
+        content = f.read()
+
+    # Convert markdown to HTML with extras
+    html = markdown2.markdown(
+        content,
+        extras=[
+            "fenced-code-blocks",
+            "code-friendly",
+            "tables",
+            "header-ids",
+            "break-on-newline",
+        ],
+    )
+
+    template = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>MaiSON Property API</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/\
+github-markdown.min.css"
+        >
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/\
+github.min.css"
+        >
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/\
+highlight.min.js"
+        ></script>
+        <script>hljs.highlightAll();</script>
+        <style>
+            .markdown-body {
+                box-sizing: border-box;
+                min-width: 200px;
+                max-width: 980px;
+                margin: 0 auto;
+                padding: 45px;
+            }
+            @media (max-width: 767px) {
+                .markdown-body {
+                    padding: 15px;
+                }
+            }
+            /* Make code text white for better readability */
+            code {
+                color: #ffffff !important;
+            }
+        </style>
+    </head>
+    <body class="markdown-body">
+        {{ content|safe }}
+    </body>
+    </html>
+    """
+
+    return render_template_string(template, content=html)
 
 
 @bp.route("/health", methods=["GET"])

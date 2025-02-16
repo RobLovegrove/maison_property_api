@@ -2,6 +2,142 @@
 
 A Flask-based REST API powering the MaiSON real estate platform.
 
+## API Endpoints
+
+### List Properties
+`GET /api/properties`
+
+Returns a paginated list of properties with basic information.
+
+Query Parameters:
+- `page`: Page number (default: 1)
+- `per_page`: Items per page (default: 10, max: 50)
+
+Filters:
+- `min_price` & `max_price`: Price range
+- `bedrooms`: Minimum number of bedrooms
+- `property_type`: Type of property
+- `city`: City name (partial match)
+- `min_square_footage`: Minimum square footage
+- `bathrooms`: Minimum number of bathrooms
+- `reception_rooms`: Minimum number of reception rooms
+- `has_garden`: Boolean
+- `has_garage`: Boolean
+- `epc_rating`: Energy rating
+- `ownership_type`: Type of ownership
+- `postcode_area`: Postcode prefix
+
+Example: `/api/properties?page=2&per_page=20&min_price=300000&bedrooms=3&city=London`
+
+Response:
+```json
+{
+    "properties": [
+        {
+            "id": 1,
+            "price": 350000,
+            "status": "for_sale",
+            "created_at": "2024-02-16T12:00:00",
+            "address": {
+                "house_number": "123",
+                "street": "Test Street",
+                "city": "London",
+                "postcode": "SW1 1AA"
+            },
+            "specs": {
+                "bedrooms": 3,
+                "bathrooms": 2,
+                "property_type": "semi-detached",
+                "square_footage": 1200.0
+            },
+            "features": {
+                "has_garden": true,
+                "parking_spaces": 2
+            },
+            "main_image": "https://example.com/image.jpg"
+        }
+    ],
+    "pagination": {
+        "page": 1,
+        "per_page": 10,
+        "total": 45,
+        "pages": 5,
+        "has_next": true,
+        "has_prev": false
+    }
+}
+```
+
+### Get Property Details
+`GET /api/properties/<id>`
+
+Returns detailed information about a specific property, including:
+- Full property description
+- Reception rooms
+- EPC rating
+- All images including floorplan
+- Garden size
+- Council tax band
+- Key features
+
+### Create Property
+`POST /api/properties`
+
+Create a new property listing. Request body should include all required fields.
+
+Example:
+```bash
+POST /api/properties
+Content-Type: application/json
+
+{
+    "price": 350000,
+    "status": "for_sale",
+    "description": "A lovely property",
+    "address": {
+        "house_number": "123",
+        "street": "Test Street",
+        "city": "London",
+        "postcode": "SW1 1AA"
+    },
+    "specs": {
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "reception_rooms": 1,
+        "square_footage": 1200.0,
+        "property_type": "semi-detached",
+        "epc_rating": "B"
+    },
+    "features": {
+        "has_garden": true,
+        "garden_size": 100.0,
+        "parking_spaces": 2,
+        "has_garage": true
+    }
+}
+```
+
+### Update Property
+`PUT /api/properties/<id>`
+
+Update an existing property. Supports partial updates.
+
+Example:
+```bash
+PUT /api/properties/1
+Content-Type: application/json
+
+{
+    "price": 375000,
+    "description": "Updated description"
+}
+```
+
+### Delete Property
+`DELETE /api/properties/<id>`
+
+Remove a property listing.
+
 ## Setup
 
 ### Prerequisites
@@ -99,99 +235,6 @@ flask db upgrade
 flask db downgrade
 ```
 
-## API Endpoints
-
-### List Properties
-`GET /api/properties`
-
-Returns a paginated list of properties with basic information.
-
-Query Parameters:
-- `page`: Page number (default: 1)
-- `per_page`: Items per page (default: 10, max: 50)
-
-Filters:
-- `min_price` & `max_price`: Price range
-- `bedrooms`: Minimum number of bedrooms
-- `property_type`: Type of property
-- `city`: City name (partial match)
-- `min_square_footage`: Minimum square footage
-- `bathrooms`: Minimum number of bathrooms
-- `reception_rooms`: Minimum number of reception rooms
-- `has_garden`: Boolean
-- `has_garage`: Boolean
-- `epc_rating`: Energy rating
-- `ownership_type`: Type of ownership
-- `postcode_area`: Postcode prefix
-
-Example: `/api/properties?page=2&per_page=20&min_price=300000&bedrooms=3&city=London`
-
-Response:
-```json
-{
-    "properties": [
-        {
-            "id": 1,
-            "price": 350000,
-            "status": "for_sale",
-            "created_at": "2024-02-16T12:00:00",
-            "address": {
-                "house_number": "123",
-                "street": "Test Street",
-                "city": "London",
-                "postcode": "SW1 1AA"
-            },
-            "specs": {
-                "bedrooms": 3,
-                "bathrooms": 2,
-                "property_type": "semi-detached",
-                "square_footage": 1200.0
-            },
-            "features": {
-                "has_garden": true,
-                "parking_spaces": 2
-            },
-            "main_image": "https://example.com/image.jpg"
-        }
-    ],
-    "pagination": {
-        "page": 1,
-        "per_page": 10,
-        "total": 45,
-        "pages": 5,
-        "has_next": true,
-        "has_prev": false
-    }
-}
-```
-
-### Get Property Details
-`GET /api/properties/<id>`
-
-Returns detailed information about a specific property, including:
-- Full property description
-- Reception rooms
-- EPC rating
-- All images including floorplan
-- Garden size
-- Council tax band
-- Key features
-
-### Create Property
-`POST /api/properties`
-
-Create a new property listing. Request body should include all required fields.
-
-### Update Property
-`PUT /api/properties/<id>`
-
-Update an existing property. Supports partial updates.
-
-### Delete Property
-`DELETE /api/properties/<id>`
-
-Remove a property listing.
-
 ## Filtering
 
 The list endpoint supports various filters:
@@ -238,146 +281,3 @@ Test coverage includes:
 - POST /api/properties endpoint with validation
 - PUT /api/properties/<id> endpoint
 - DELETE /api/properties/<id> endpoint
-
-## API Examples
-
-### List Properties
-```bash
-GET /api/properties?min_price=300000&bedrooms=3&city=London
-```
-Response:
-```json
-[
-    {
-        "id": 1,
-        "price": 350000,
-        "status": "for_sale",
-        "created_at": "2024-01-26T17:54:04.872288",
-        "address": {
-            "house_number": "123",
-            "street": "Test Street",
-            "city": "London",
-            "postcode": "SW1 1AA"
-        },
-        "specs": {
-            "bedrooms": 3,
-            "bathrooms": 2,
-            "property_type": "semi-detached",
-            "square_footage": 1200.0
-        },
-        "features": {
-            "has_garden": true,
-            "parking_spaces": 2
-        },
-        "main_image": "https://maison-property-images.azurewebsites.net/properties/modern-house-1.jpg"
-    }
-]
-```
-
-### Get Property Details
-```bash
-GET /api/properties/1
-```
-Response:
-```json
-{
-    "id": 1,
-    "price": 350000,
-    "status": "for_sale",
-    "description": "A lovely 3 bedroom property in London",
-    "address": {
-        "house_number": "123",
-        "street": "Test Street",
-        "city": "London",
-        "postcode": "SW1 1AA"
-    },
-    "specs": {
-        "bedrooms": 3,
-        "bathrooms": 2,
-        "reception_rooms": 1,
-        "square_footage": 1200.0,
-        "property_type": "semi-detached",
-        "epc_rating": "B"
-    },
-    "features": {
-        "has_garden": true,
-        "garden_size": 100.0,
-        "parking_spaces": 2,
-        "has_garage": true
-    },
-    "images": {
-        "main": "https://maison-property-images.azurewebsites.net/properties/modern-house-1.jpg",
-        "additional": [
-            "https://maison-property-images.azurewebsites.net/properties/kitchen-1.jpg",
-            "https://maison-property-images.azurewebsites.net/properties/living-room-1.jpg"
-        ],
-        "floorplan": "https://maison-property-images.azurewebsites.net/floorplans/3-bed-house.pdf"
-    }
-}
-```
-
-### Create Property
-```bash
-POST /api/properties
-Content-Type: application/json
-
-{
-    "price": 350000,
-    "status": "for_sale",
-    "description": "A lovely property",
-    "address": {
-        "house_number": "123",
-        "street": "Test Street",
-        "city": "London",
-        "postcode": "SW1 1AA"
-    },
-    "specs": {
-        "bedrooms": 3,
-        "bathrooms": 2,
-        "reception_rooms": 1,
-        "square_footage": 1200.0,
-        "property_type": "semi-detached",
-        "epc_rating": "B"
-    },
-    "features": {
-        "has_garden": true,
-        "garden_size": 100.0,
-        "parking_spaces": 2,
-        "has_garage": true
-    }
-}
-```
-Response:
-```json
-{
-    "id": 1
-}
-```
-
-### Update Property
-```bash
-PUT /api/properties/1
-Content-Type: application/json
-
-{
-    "price": 375000,
-    "description": "Updated description"
-}
-```
-Response:
-```json
-{
-    "message": "Property updated successfully"
-}
-```
-
-### Delete Property
-```bash
-DELETE /api/properties/1
-```
-Response:
-```json
-{
-    "message": "Property deleted successfully"
-}
-```
