@@ -104,43 +104,71 @@ flask db downgrade
 ### List Properties
 `GET /api/properties`
 
-Returns a list of properties with basic information.
+Returns a paginated list of properties with basic information.
+
+Query Parameters:
+- `page`: Page number (default: 1)
+- `per_page`: Items per page (default: 10, max: 50)
+
+Filters:
+- `min_price` & `max_price`: Price range
+- `bedrooms`: Minimum number of bedrooms
+- `property_type`: Type of property
+- `city`: City name (partial match)
+- `min_square_footage`: Minimum square footage
+- `bathrooms`: Minimum number of bathrooms
+- `reception_rooms`: Minimum number of reception rooms
+- `has_garden`: Boolean
+- `has_garage`: Boolean
+- `epc_rating`: Energy rating
+- `ownership_type`: Type of ownership
+- `postcode_area`: Postcode prefix
+
+Example: `/api/properties?page=2&per_page=20&min_price=300000&bedrooms=3&city=London`
 
 Response:
 ```json
-[
-    {
-        "id": 1,
-        "price": 350000,
-        "status": "for_sale",
-        "created_at": "2024-02-16T12:00:00",
-        "address": {
-            "house_number": "123",
-            "street": "Test Street",
-            "city": "London",
-            "postcode": "SW1 1AA"
-        },
-        "specs": {
-            "bedrooms": 3,
-            "bathrooms": 2,
-            "property_type": "semi-detached",
-            "square_footage": 1200.0
-        },
-        "features": {
-            "has_garden": true,
-            "parking_spaces": 2
-        },
-        "main_image": "https://example.com/image.jpg"
+{
+    "properties": [
+        {
+            "id": 1,
+            "price": 350000,
+            "status": "for_sale",
+            "created_at": "2024-02-16T12:00:00",
+            "address": {
+                "house_number": "123",
+                "street": "Test Street",
+                "city": "London",
+                "postcode": "SW1 1AA"
+            },
+            "specs": {
+                "bedrooms": 3,
+                "bathrooms": 2,
+                "property_type": "semi-detached",
+                "square_footage": 1200.0
+            },
+            "features": {
+                "has_garden": true,
+                "parking_spaces": 2
+            },
+            "main_image": "https://example.com/image.jpg"
+        }
+    ],
+    "pagination": {
+        "page": 1,
+        "per_page": 10,
+        "total": 45,
+        "pages": 5,
+        "has_next": true,
+        "has_prev": false
     }
-]
+}
 ```
 
 ### Get Property Details
 `GET /api/properties/<id>`
 
-Returns detailed information about a specific property.
-
-Response includes additional fields:
+Returns detailed information about a specific property, including:
 - Full property description
 - Reception rooms
 - EPC rating

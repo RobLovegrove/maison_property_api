@@ -60,6 +60,13 @@ def health_check():
 
 @bp.route("/api/properties", methods=["GET"])
 def get_properties():
+    # Pagination parameters
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 10, type=int)
+
+    # Limit per_page to prevent excessive requests
+    per_page = min(per_page, 50)
+
     # Filters
     min_price = request.args.get("min_price", type=int)
     max_price = request.args.get("max_price", type=int)
@@ -117,38 +124,50 @@ def get_properties():
     if postcode_area:
         query = query.filter(Address.postcode.ilike(f"{postcode_area}%"))
 
-    properties = query.all()
+    # Paginate results
+    paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+
     return jsonify(
-        [
-            {
-                "id": p.id,
-                "price": p.price,
-                "status": p.status,
-                "created_at": p.created_at.isoformat(),
-                "address": {
-                    "house_number": p.address.house_number,
-                    "street": p.address.street,
-                    "city": p.address.city,
-                    "postcode": p.address.postcode,
-                },
-                "specs": {
-                    "bedrooms": p.specs.bedrooms,
-                    "bathrooms": p.specs.bathrooms,
-                    "property_type": p.specs.property_type,
-                    "square_footage": p.specs.square_footage,
-                },
-                "features": {
-                    "has_garden": (
-                        p.features.has_garden if p.features else False
-                    ),
-                    "parking_spaces": (
-                        p.features.parking_spaces if p.features else 0
-                    ),
-                },
-                "main_image": p.main_image_url,
-            }
-            for p in properties
-        ]
+        {
+            "properties": [
+                {
+                    "id": p.id,
+                    "price": p.price,
+                    "status": p.status,
+                    "created_at": p.created_at.isoformat(),
+                    "address": {
+                        "house_number": p.address.house_number,
+                        "street": p.address.street,
+                        "city": p.address.city,
+                        "postcode": p.address.postcode,
+                    },
+                    "specs": {
+                        "bedrooms": p.specs.bedrooms,
+                        "bathrooms": p.specs.bathrooms,
+                        "property_type": p.specs.property_type,
+                        "square_footage": p.specs.square_footage,
+                    },
+                    "features": {
+                        "has_garden": (
+                            p.features.has_garden if p.features else False
+                        ),
+                        "parking_spaces": (
+                            p.features.parking_spaces if p.features else 0
+                        ),
+                    },
+                    "main_image": p.main_image_url,
+                }
+                for p in paginated.items
+            ],
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": paginated.total,
+                "pages": paginated.pages,
+                "has_next": paginated.has_next,
+                "has_prev": paginated.has_prev,
+            },
+        }
     )
 
 

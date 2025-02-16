@@ -53,7 +53,8 @@ def test_get_properties_empty(client, session, app_context):
 
     response = client.get("/api/properties")
     assert response.status_code == 200
-    assert response.json == []
+    assert response.json["properties"] == []  # Check properties array is empty
+    assert response.json["pagination"]["total"] == 0
 
 
 def test_create_property(client, session, sample_property):
@@ -213,20 +214,20 @@ def test_filter_properties(client, session, app_context):
     # Test price filter
     response = client.get("/api/properties?min_price=400000")
     assert response.status_code == 200
-    assert len(response.json) == 1
-    assert response.json[0]["price"] == 500000
+    assert len(response.json["properties"]) == 1
+    assert response.json["properties"][0]["price"] == 500000
 
     # Test bedrooms filter
     response = client.get("/api/properties?bedrooms=4")
     assert response.status_code == 200
-    assert len(response.json) == 1
-    assert response.json[0]["specs"]["bedrooms"] == 4
+    assert len(response.json["properties"]) == 1
+    assert response.json["properties"][0]["specs"]["bedrooms"] == 4
 
     # Test city filter
     response = client.get("/api/properties?city=London")
     assert response.status_code == 200
-    assert len(response.json) == 1
-    assert response.json[0]["address"]["city"] == "London"
+    assert len(response.json["properties"]) == 1
+    assert response.json["properties"][0]["address"]["city"] == "London"
 
 
 def test_advanced_filters(client, session, app_context):
@@ -272,7 +273,7 @@ def test_advanced_filters(client, session, app_context):
     for filter_str, expected_count in filters:
         response = client.get(f"/api/properties?{filter_str}")
         assert response.status_code == 200
-        assert len(response.json) == expected_count
+        assert len(response.json["properties"]) == expected_count
 
 
 def test_properties_default_ordering(client, session, app_context):
@@ -344,14 +345,75 @@ def test_properties_default_ordering(client, session, app_context):
     # Get and verify ordering
     response = client.get("/api/properties")
     assert response.status_code == 200
-    assert len(response.json) == 2
+    assert len(response.json["properties"]) == 2
 
-    print("\nResponse order:")
-    for idx, prop in enumerate(response.json):
-        print(
-            f"Property {idx}: ID {prop['id']} "
-            f"(created: {prop['created_at']})"
-        )
-
+    properties = response.json["properties"]
     # Properties with same timestamp should be ordered by ID (newest first)
-    assert response.json[0]["id"] > response.json[1]["id"]
+    assert properties[0]["id"] > properties[1]["id"]
+
+
+def test_property_pagination(client, session, app_context):
+    """Test properties endpoint pagination"""
+    # Create 15 properties with full data (needed for creation)
+    for i in range(15):
+        property_data = {
+            "price": 300000 + (i * 50000),
+            "status": "for_sale",
+            "description": f"Property {i+1}",  # Required for creation
+            "address": {
+                "house_number": f"{i+1}",
+                "street": "Test Street",
+                "city": "London",
+                "postcode": f"SW{i+1} 1AA",
+            },
+            "specs": {
+                "bedrooms": 3,
+                "bathrooms": 2,
+                "reception_rooms": 1,
+                "square_footage": 1200.0,
+                "property_type": "semi-detached",
+                "epc_rating": "B",
+            },
+            "features": {
+                "has_garden": True,
+                "garden_size": 100.0,  # Not returned in list
+                "parking_spaces": 1,
+                "has_garage": False,
+            },
+            "ownership_type": "freehold",
+            "key_features": ["Garden"],  # Not returned in list
+            "council_tax_band": "C",  # Not returned in list
+        }
+        client.post("/api/properties", json=property_data)
+
+    # Test default pagination (page 1, 10 per page)
+    response = client.get("/api/properties")
+    assert response.status_code == 200
+    data = response.json
+
+    # Verify only minimal data is returned
+    first_property = data["properties"][0]
+    assert "description" not in first_property
+    assert "garden_size" not in first_property["features"]
+    assert "key_features" not in first_property
+    assert "council_tax_band" not in first_property
+
+    # Verify pagination
+    assert len(data["properties"]) == 10
+    assert data["pagination"]["page"] == 1
+    assert data["pagination"]["total"] == 15
+    assert data["pagination"]["has_next"] is True
+
+    # Test second page
+    response = client.get("/api/properties?page=2")
+    assert response.status_code == 200
+    data = response.json
+    assert len(data["properties"]) == 5
+    assert data["pagination"]["has_next"] is False
+
+    # Test custom per_page
+    response = client.get("/api/properties?per_page=5")
+    assert response.status_code == 200
+    data = response.json
+    assert len(data["properties"]) == 5
+    assert data["pagination"]["pages"] == 3
