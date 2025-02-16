@@ -5,8 +5,10 @@ from app.models import db
 
 @pytest.fixture
 def app():
-    flask_app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost:5432/maison_test'
-    flask_app.config['TESTING'] = True
+    flask_app.config["SQLALCHEMY_DATABASE_URI"] = (
+        "postgresql://postgres:postgres@localhost:5432/maison_test"
+    )
+    flask_app.config["TESTING"] = True
     return flask_app
 
 
@@ -19,10 +21,10 @@ def client(app):
 def init_database():
     # Setup - create tables
     db.create_all()
-    
+
     # Test runs here
     yield
-    
+
     # Teardown - clear tables
     db.session.remove()
     db.drop_all()
