@@ -8,7 +8,7 @@ from app.models import (
     PropertyMedia,
 )
 
-bp = Blueprint('main', __name__)
+bp = Blueprint("main", __name__)
 
 
 def validate_property_data(data):
@@ -85,9 +85,7 @@ def get_properties():
 
     # Debug query
     print("\nSQL Query:")
-    print(
-        query.statement.compile(compile_kwargs={"literal_binds": True})
-    )
+    print(query.statement.compile(compile_kwargs={"literal_binds": True}))
 
     # Apply filters
     if min_price:
@@ -109,13 +107,9 @@ def get_properties():
     if reception_rooms:
         query = query.filter(PropertySpecs.reception_rooms >= reception_rooms)
     if has_garden is not None:
-        query = query.filter(
-            PropertyFeatures.has_garden == has_garden
-        )
+        query = query.filter(PropertyFeatures.has_garden == has_garden)
     if has_garage is not None:
-        query = query.filter(
-            PropertyFeatures.has_garage == has_garage
-        )
+        query = query.filter(PropertyFeatures.has_garage == has_garage)
     if epc_rating:
         query = query.filter(PropertySpecs.epc_rating == epc_rating)
     if ownership_type:
@@ -131,7 +125,6 @@ def get_properties():
                 "price": p.price,
                 "status": p.status,
                 "created_at": p.created_at.isoformat(),
-                "description": p.description,
                 "address": {
                     "house_number": p.address.house_number,
                     "street": p.address.street,

@@ -1,5 +1,11 @@
 import pytest
-from app.models import Property
+from app.models import (
+    Property,
+    PropertyMedia,
+    PropertyFeatures,
+    PropertySpecs,
+    Address,
+)
 from datetime import datetime  # noqa: F401
 
 
@@ -37,7 +43,11 @@ def sample_property():
 
 def test_get_properties_empty(client, session, app_context):
     """Test GET /api/properties returns empty list when no properties exist"""
-    # Clear the database using the session
+    # Clear the database in the correct order to handle foreign keys
+    session.query(PropertyMedia).delete()
+    session.query(PropertyFeatures).delete()
+    session.query(PropertySpecs).delete()
+    session.query(Address).delete()
     session.query(Property).delete()
     session.commit()
 
@@ -339,8 +349,8 @@ def test_properties_default_ordering(client, session, app_context):
     print("\nResponse order:")
     for idx, prop in enumerate(response.json):
         print(
-            f"Property {idx}: {prop['description']} "
-            f"(created: {prop['created_at']}, id: {prop['id']})"
+            f"Property {idx}: ID {prop['id']} "
+            f"(created: {prop['created_at']})"
         )
 
     # Properties with same timestamp should be ordered by ID (newest first)

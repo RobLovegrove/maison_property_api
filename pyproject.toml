@@ -1,9 +1,9 @@
 [tool.black]
-line-length = 88
+line-length = 79
 target-version = ['py39']
-include = '\.pyx?$'
+include = '\.pyi?$'
 extend-exclude = '''
 # A regex preceded with ^/ will apply only to files and directories
 # in the root of the project.
-^/docs
+^/tests/fixtures/
 ''' 

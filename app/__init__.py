@@ -6,26 +6,28 @@ from flask_migrate import Migrate
 from flask_cors import CORS
 from app.config import Config
 
-# Initialize extensions
+# Initialize extensions without app context
 db = SQLAlchemy()
 migrate = Migrate()
 
 
 def create_app():
+    # Create the Flask application
     flask_app = Flask(__name__)
     flask_app.config.from_object(Config)
 
-    # Initialize Flask extensions
+    # Initialize extensions with app context
     db.init_app(flask_app)
     migrate.init_app(flask_app, db)
     CORS(flask_app)
 
     # Register blueprints/routes
     from app.main import bp
+
     flask_app.register_blueprint(bp)
 
     return flask_app
 
 
-# Create the app instance
+# Create the singleton app instance
 app = create_app()

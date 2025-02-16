@@ -101,48 +101,86 @@ flask db downgrade
 
 ## API Endpoints
 
-### Properties
-- `GET /api/properties` - List all properties
-  - Returns basic property information (id, price, address, rooms, etc.)
-  - Query parameters:
-    - `property_type`: Filter by property type
-    - `min_price`: Minimum price
-    - `max_price`: Maximum price
-    - `min_beds`: Minimum number of bedrooms
-- `GET /api/properties/<id>` - Get detailed property information
-  - Returns:
-    - Basic information (price, address, rooms, etc.)
-    - Full property description
-    - All property images and floorplan
-    - Property details (ownership type, age, EPC rating, etc.)
-    - Key features
-    - Council tax information
-- `POST /api/properties` - Create a new property
-  - Requires JSON body with property details
-  - Required fields:
-    - price (integer)
-    - address (string)
-    - bedrooms (integer)
-    - bathrooms (integer)
-    - reception_rooms (integer)
-    - square_footage (float)
-    - property_type (string)
-    - epc_rating (string)
-    - main_image_url (string)
-    - description (string)
-    - ownership_type (string)
-    - key_features (array)
-    - council_tax_band (string)
-  - Optional fields:
-    - additional_image_urls (array)
-    - floorplan_url (string)
-    - leasehold_years_remaining (integer)
-    - property_age (string)
-- `PUT /api/properties/<id>` - Update an existing property
-  - Requires JSON body with fields to update
-  - All fields are optional for updates
-- `DELETE /api/properties/<id>` - Delete a property
-  - Removes the property from the database
+### List Properties
+`GET /api/properties`
+
+Returns a list of properties with basic information.
+
+Response:
+```json
+[
+    {
+        "id": 1,
+        "price": 350000,
+        "status": "for_sale",
+        "created_at": "2024-02-16T12:00:00",
+        "address": {
+            "house_number": "123",
+            "street": "Test Street",
+            "city": "London",
+            "postcode": "SW1 1AA"
+        },
+        "specs": {
+            "bedrooms": 3,
+            "bathrooms": 2,
+            "property_type": "semi-detached",
+            "square_footage": 1200.0
+        },
+        "features": {
+            "has_garden": true,
+            "parking_spaces": 2
+        },
+        "main_image": "https://example.com/image.jpg"
+    }
+]
+```
+
+### Get Property Details
+`GET /api/properties/<id>`
+
+Returns detailed information about a specific property.
+
+Response includes additional fields:
+- Full property description
+- Reception rooms
+- EPC rating
+- All images including floorplan
+- Garden size
+- Council tax band
+- Key features
+
+### Create Property
+`POST /api/properties`
+
+Create a new property listing. Request body should include all required fields.
+
+### Update Property
+`PUT /api/properties/<id>`
+
+Update an existing property. Supports partial updates.
+
+### Delete Property
+`DELETE /api/properties/<id>`
+
+Remove a property listing.
+
+## Filtering
+
+The list endpoint supports various filters:
+- `min_price` & `max_price`
+- `bedrooms`
+- `property_type`
+- `city`
+- `min_square_footage`
+- `bathrooms`
+- `reception_rooms`
+- `has_garden`
+- `has_garage`
+- `epc_rating`
+- `ownership_type`
+- `postcode_area`
+
+Example: `/api/properties?min_price=300000&bedrooms=3&city=London`
 
 ## Development
 
