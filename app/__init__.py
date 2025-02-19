@@ -1,33 +1,46 @@
 # Empty file to make the directory a Python package
 
-from flask import Flask
+from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
-from app.config import Config
+from app.config import config
 
 # Initialize extensions without app context
 db = SQLAlchemy()
 migrate = Migrate()
 
 
-def create_app():
-    # Create the Flask application
-    flask_app = Flask(__name__)
-    flask_app.config.from_object(Config)
+def create_app(config_name="default"):
+    """Create and configure the Flask application."""
+    app = Flask(__name__)
+    app.url_map.strict_slashes = False
+    app.config.from_object(config[config_name])
+
+    @app.before_request
+    def log_request_info():
+        app.logger.debug("Headers: %s", request.headers)
+        app.logger.debug("Body: %s", request.get_data())
+        app.logger.debug("URL: %s", request.url)
 
     # Initialize extensions with app context
-    db.init_app(flask_app)
-    migrate.init_app(flask_app, db)
-    CORS(flask_app)
+    db.init_app(app)
+    migrate.init_app(app)
+    CORS(app)
 
-    # Register blueprints/routes
-    from app.main import bp
+    # Register blueprints/routes - properties first for route precedence
+    from app.properties import bp as properties_bp
 
-    flask_app.register_blueprint(bp)
+    app.register_blueprint(properties_bp, url_prefix="/api/properties")
 
-    return flask_app
+    from app.main import bp as main_bp
 
+    app.register_blueprint(main_bp)
 
-# Create the singleton app instance
-app = create_app()
+    # Print registered routes for debugging
+    print("\nRegistered Routes:")
+    for rule in app.url_map.iter_rules():
+        print(f"{rule.endpoint}: {rule.rule}")
+    print("\n")
+
+    return app

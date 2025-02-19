@@ -1,102 +1,122 @@
+<style>
+.highlight pre {
+  color: #ffffff !important;
+}
+pre code {
+  color: #ffffff !important;
+}
+code {
+  color: #ffffff !important;
+}
+</style>
+
 # MaiSON Property API
 
 A Flask-based REST API powering the MaiSON real estate platform.
 
 ## API Endpoints
 
-### List Properties
-`GET /api/properties`
+### Examples
 
-Returns a paginated list of properties with basic information.
+#### Using curl
 
-Query Parameters:
-- `page`: Page number (default: 1)
-- `per_page`: Items per page (default: 10, max: 50)
-
-Filters:
-- `min_price` & `max_price`: Price range
-- `bedrooms`: Minimum number of bedrooms
-- `property_type`: Type of property
-- `city`: City name (partial match)
-- `min_square_footage`: Minimum square footage
-- `bathrooms`: Minimum number of bathrooms
-- `reception_rooms`: Minimum number of reception rooms
-- `has_garden`: Boolean
-- `has_garage`: Boolean
-- `epc_rating`: Energy rating
-- `ownership_type`: Type of ownership
-- `postcode_area`: Postcode prefix
-
-Example: `/api/properties?page=2&per_page=20&min_price=300000&bedrooms=3&city=London`
-
-Response:
-```json
-{
-    "properties": [
-        {
-            "id": 1,
-            "price": 350000,
-            "status": "for_sale",
-            "created_at": "2024-02-16T12:00:00",
-            "address": {
-                "house_number": "123",
-                "street": "Test Street",
-                "city": "London",
-                "postcode": "SW1 1AA"
-            },
-            "specs": {
-                "bedrooms": 3,
-                "bathrooms": 2,
-                "property_type": "semi-detached",
-                "square_footage": 1200.0
-            },
-            "features": {
-                "has_garden": true,
-                "parking_spaces": 2
-            },
-            "main_image": "https://example.com/image.jpg"
-        }
-    ],
-    "pagination": {
-        "page": 1,
-        "per_page": 10,
-        "total": 45,
-        "pages": 5,
-        "has_next": true,
-        "has_prev": false
-    }
-}
+List all properties:
+```bash
+curl http://localhost:8080/api/properties
 ```
 
-### Get Property Details
-`GET /api/properties/<id>`
-
-Returns detailed information about a specific property, including:
-- Full property description
-- Reception rooms
-- EPC rating
-- All images including floorplan
-- Garden size
-- Council tax band
-- Key features
-
-### Create Property
-`POST /api/properties`
-
-Create a new property listing. Request body should include all required fields.
-
-Example:
+Get a specific property:
 ```bash
-POST /api/properties
-Content-Type: application/json
+curl http://localhost:8080/api/properties/1
+```
 
-{
+Create a new property:
+```bash
+curl -X POST http://localhost:8080/api/properties \
+  -H "Content-Type: application/json" \
+  -d '{
     "price": 350000,
-    "status": "for_sale",
-    "description": "A lovely property",
     "address": {
-        "house_number": "123",
-        "street": "Test Street",
+      "house_number": "42",
+      "street": "Example Street",
+      "city": "London",
+      "postcode": "SW1 1AA"
+    },
+    "specs": {
+      "bedrooms": 3,
+      "bathrooms": 2,
+      "reception_rooms": 1,
+      "square_footage": 1200.0,
+      "property_type": "semi-detached",
+      "epc_rating": "B"
+    },
+    "details": {
+      "description": "A lovely property...",
+      "property_type": "semi-detached",
+      "construction_year": 2020,
+      "parking_spaces": 2,
+      "heating_type": "gas"
+    }
+  }'
+```
+
+Update a property:
+```bash
+curl -X PUT http://localhost:8080/api/properties/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "price": 375000,
+    "specs": {
+      "bedrooms": 4,
+      "bathrooms": 2,
+      "reception_rooms": 2,
+      "square_footage": 1500.0,
+      "property_type": "semi-detached",
+      "epc_rating": "A"
+    }
+  }'
+```
+
+Delete a property:
+```bash
+curl -X DELETE http://localhost:8080/api/properties/1
+```
+
+Filter properties:
+```bash
+# Properties over £400,000
+curl "http://localhost:8080/api/properties?min_price=400000"
+
+# Properties with 3+ bedrooms
+curl "http://localhost:8080/api/properties?bedrooms=3"
+
+# Properties in London with gardens
+curl "http://localhost:8080/api/properties?city=London&has_garden=true"
+```
+
+#### Using Python requests
+
+```python
+import requests
+
+# Base URL
+BASE_URL = "http://localhost:8080"
+
+# List all properties
+response = requests.get(f"{BASE_URL}/api/properties")
+properties = response.json()
+
+# Get specific property
+property_id = 1
+response = requests.get(f"{BASE_URL}/api/properties/{property_id}")
+property_detail = response.json()
+
+# Create new property
+new_property = {
+    "price": 350000,
+    "address": {
+        "house_number": "42",
+        "street": "Example Street",
         "city": "London",
         "postcode": "SW1 1AA"
     },
@@ -108,176 +128,199 @@ Content-Type: application/json
         "property_type": "semi-detached",
         "epc_rating": "B"
     },
+    "details": {
+        "description": "A lovely property...",
+        "property_type": "semi-detached",
+        "construction_year": 2020,
+        "parking_spaces": 2,
+        "heating_type": "gas"
+    }
+}
+response = requests.post(f"{BASE_URL}/api/properties", json=new_property)
+created_property = response.json()
+
+# Update property
+update_data = {
+    "price": 375000,
+    "specs": {
+        "bedrooms": 4,
+        "bathrooms": 2,
+        "reception_rooms": 2,
+        "square_footage": 1500.0,
+        "property_type": "semi-detached",
+        "epc_rating": "A"
+    }
+}
+response = requests.put(f"{BASE_URL}/api/properties/{property_id}", json=update_data)
+
+# Delete property
+response = requests.delete(f"{BASE_URL}/api/properties/{property_id}")
+
+# Filter properties
+params = {
+    'min_price': 400000,
+    'bedrooms': 3,
+    'city': 'London',
+    'has_garden': True
+}
+response = requests.get(f"{BASE_URL}/api/properties", params=params)
+filtered_properties = response.json()
+```
+
+### List Properties
+`GET /api/properties`
+
+Query Parameters:
+- `min_price`: Minimum price (integer)
+- `bedrooms`: Minimum number of bedrooms (integer)
+- `bathrooms`: Minimum number of bathrooms (integer)
+- `city`: City name (string)
+- `has_garden`: Filter for properties with gardens (boolean)
+- `has_garage`: Filter for properties with garages (boolean)
+- `min_square_footage`: Minimum square footage (float)
+
+Returns a list of properties with basic information.
+
+Response:
+```
+[
+    {
+        "id": 1,
+        "price": 350000,
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "main_image_url": "https://example.com/image.jpg",
+        "created_at": "2024-02-16T12:00:00",
+        "address": {
+            "street": "Test Street",
+            "city": "London",
+            "postcode": "SW1 1AA"
+        },
+        "specs": {
+            "property_type": "semi-detached",
+            "square_footage": 1200.0
+        }
+    }
+]
+```
+
+### Get Property Details
+`GET /api/properties/<id>`
+
+Returns detailed information about a specific property.
+
+Response:
+```
+{
+    "id": 1,
+    "price": 350000,
+    "created_at": "2024-02-16T12:00:00",
+    "images": {
+        "main": "https://example.com/main.jpg",
+        "additional": [
+            "https://example.com/image1.jpg",
+            "https://example.com/image2.jpg"
+        ],
+        "floorplan": "https://example.com/floorplan.pdf"
+    },
+    "address": {
+        "house_number": "123",
+        "street": "Test Street",
+        "city": "London",
+        "postcode": "SW1 1AA",
+        "latitude": 51.5074,
+        "longitude": -0.1278
+    },
+    "specs": {
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "reception_rooms": 2,
+        "square_footage": 1200.0,
+        "property_type": "semi-detached",
+        "epc_rating": "B"
+    },
     "features": {
         "has_garden": true,
         "garden_size": 100.0,
         "parking_spaces": 2,
         "has_garage": true
+    },
+    "details": {
+        "description": "A stunning 3 bedroom property...",
+        "property_type": "semi-detached",
+        "construction_year": 1990,
+        "parking_spaces": 2,
+        "heating_type": "Gas Central"
     }
 }
 ```
 
-### Update Property
-`PUT /api/properties/<id>`
-
-Update an existing property. Supports partial updates.
-
-Example:
-```bash
-PUT /api/properties/1
-Content-Type: application/json
-
-{
-    "price": 375000,
-    "description": "Updated description"
-}
-```
-
-### Delete Property
-`DELETE /api/properties/<id>`
-
-Remove a property listing.
-
 ## Setup
 
-### Prerequisites
-- Python 3.7+
-- PostgreSQL 14
-- libpq
+### Database Setup
 
-### Installation
-
-1. Clone the repository
-```bash
-git clone git@github.com:RobLovegrove/maison_property_api.git properties_api
-cd properties_api
+1. Create a local test database (for running tests):
+```
+createdb maison_test
 ```
 
-2. Create and activate virtual environment
-```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+2. Create a `.env` file with your Azure database credentials:
+```
+# .env
+DATABASE_URL=postgresql://username:password@host:port/database?sslmode=require
 ```
 
-3. Install dependencies
-```bash
-pip install -r app/requirements.txt
+Note: Contact the team for the actual database credentials. Never commit the `.env` file to version control.
+
+3. Initialize database schema:
+```
+flask db upgrade
 ```
 
-4. Set up PostgreSQL (macOS)
-```bash
-# Install PostgreSQL
-brew install postgresql@14 libpq
+### Running the API
 
-# Start PostgreSQL service
-brew services start postgresql@14
-
-# Create database user and database
-createuser -s postgres
-createdb property_db
+1. Start the API server (uses Azure database):
 ```
-
-### Running the Application
-
-1. Seed the database with sample data
-```bash
-PYTHONPATH=. python scripts/seed_database.py
-```
-
-2. Start the development server
-```bash
-./scripts/run_local.sh
+./scripts/run.sh
 ```
 
 The API will be available at `http://localhost:8080`
 
-## Database Management
+### Testing
 
-### Direct Database Access
-Connect to the database using psql:
-```bash
-psql property_db
+Run the test suite (uses local test database):
+```
+./scripts/setup_test_db.sh
 ```
 
-Useful psql commands:
-```sql
-\dt                     -- List all tables
-\d properties           -- Show table structure
-\q                      -- Quit psql
-
--- Query examples
-SELECT * FROM properties;
-SELECT address, price FROM properties WHERE bedrooms > 2;
-SELECT property_type, COUNT(*) FROM properties GROUP BY property_type;
+Or run specific tests:
+```
+pytest tests/test_properties.py
 ```
 
-### Database Migrations
-To manage database schema changes:
+### Database Structure
 
-1. Initialize migrations (first time only):
-```bash
-export FLASK_APP=app/manage.py
-flask db init
+The database consists of several related tables:
+- `properties`: Core property information
+- `addresses`: Property location details
+- `property_specs`: Property specifications
+- `property_features`: Additional property features
+- `property_details`: Detailed property information
+- `property_media`: Property images and floorplans
+
+## API Response Codes
+
+The API returns standard HTTP status codes:
+
+- `200 OK`: Request successful
+- `201 Created`: Resource created successfully
+- `400 Bad Request`: Invalid input provided
+- `404 Not Found`: Resource not found
+- `500 Internal Server Error`: Server error
+
+Error responses include a message:
+```json
+{
+    "error": "Detailed error message"
+}
 ```
-
-2. Create a new migration when models change:
-```bash
-flask db migrate -m "Description of changes"
-```
-
-3. Apply pending migrations:
-```bash
-flask db upgrade
-```
-
-4. Rollback migrations if needed:
-```bash
-flask db downgrade
-```
-
-## Filtering
-
-The list endpoint supports various filters:
-- `min_price` & `max_price`
-- `bedrooms`
-- `property_type`
-- `city`
-- `min_square_footage`
-- `bathrooms`
-- `reception_rooms`
-- `has_garden`
-- `has_garage`
-- `epc_rating`
-- `ownership_type`
-- `postcode_area`
-
-Example: `/api/properties?min_price=300000&bedrooms=3&city=London`
-
-## Development
-
-### Code Style
-This project uses the `black` code formatter. To format code:
-```bash
-black app/ tests/
-```
-
-### Continuous Integration
-The following checks run on all pull requests:
-- Code formatting (black)
-- Unit tests (pytest)
-
-### Running Tests
-```bash
-# Create test database (first time only)
-createdb property_db_test
-
-# Run tests
-./scripts/run_tests.sh
-```
-
-Test coverage includes:
-- GET /api/properties endpoint
-- GET /api/properties/<id> endpoint
-- POST /api/properties endpoint with validation
-- PUT /api/properties/<id> endpoint
-- DELETE /api/properties/<id> endpoint

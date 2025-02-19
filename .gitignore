@@ -25,3 +25,6 @@ ENV/
 
 # Project files
 TODO.md
+
+.pytest_cache/
+.coverage

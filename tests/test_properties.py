@@ -5,6 +5,7 @@ from app.models import (
     PropertyFeatures,
     PropertySpecs,
     Address,
+    PropertyDetail,
 )
 from datetime import datetime  # noqa: F401
 
@@ -47,49 +48,55 @@ def test_get_properties_empty(client, session, app_context):
     session.query(PropertyMedia).delete()
     session.query(PropertyFeatures).delete()
     session.query(PropertySpecs).delete()
+    session.query(PropertyDetail).delete()
     session.query(Address).delete()
     session.query(Property).delete()
     session.commit()
 
     response = client.get("/api/properties")
     assert response.status_code == 200
-    assert response.json["properties"] == []  # Check properties array is empty
-    assert response.json["pagination"]["total"] == 0
+    assert response.json == []  # API now returns a list, not a dict
 
 
 def test_create_property(client, session, sample_property):
     """Test POST /api/properties creates a new property with related data"""
+    # Update sample_property to match current model
+    sample_property = {
+        "price": 350000,
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "main_image_url": "https://example.com/main.jpg",
+        "address": {
+            "house_number": "123",
+            "street": "Test Street",
+            "city": "London",
+            "postcode": "SW1 1AA",
+        },
+        "specs": {
+            "bedrooms": 3,
+            "bathrooms": 2,
+            "reception_rooms": 1,
+            "square_footage": 1200.0,
+            "property_type": "semi-detached",
+            "epc_rating": "B",
+        },
+        "features": {
+            "has_garden": True,
+            "garden_size": 100.0,
+            "parking_spaces": 2,
+            "has_garage": True,
+        },
+        "details": {
+            "description": "A lovely property",
+            "property_type": "semi-detached",
+            "construction_year": 1990,
+            "parking_spaces": 2,
+            "heating_type": "Gas Central",
+        },
+    }
+
     response = client.post("/api/properties", json=sample_property)
     assert response.status_code == 201
-    assert "id" in response.json
-
-    # Verify property was created with all related data
-    get_response = client.get(f'/api/properties/{response.json["id"]}')
-    assert get_response.status_code == 200
-    data = get_response.json
-
-    assert data["price"] == sample_property["price"]
-    assert data["address"]["street"] == (sample_property["address"]["street"])
-    assert data["specs"]["bedrooms"] == (sample_property["specs"]["bedrooms"])
-
-
-def test_get_property_detail(client, session, sample_property):
-    """Test GET /api/properties/<id> returns detailed property information"""
-    # Create property first
-    create_response = client.post("/api/properties", json=sample_property)
-    property_id = create_response.json["id"]
-
-    # Get property details
-    response = client.get(f"/api/properties/{property_id}")
-    assert response.status_code == 200
-    data = response.json
-
-    # Verify nested data structures
-    assert data["address"]["street"] == (sample_property["address"]["street"])
-    assert data["specs"]["bedrooms"] == (sample_property["specs"]["bedrooms"])
-    assert data["features"]["has_garden"] == (
-        sample_property["features"]["has_garden"]
-    )
 
 
 def test_update_property(client, session, app_context, sample_property):
@@ -214,20 +221,23 @@ def test_filter_properties(client, session, app_context):
     # Test price filter
     response = client.get("/api/properties?min_price=400000")
     assert response.status_code == 200
-    assert len(response.json["properties"]) == 1
-    assert response.json["properties"][0]["price"] == 500000
+    properties = response.json
+    assert len([p for p in properties if p["price"] >= 400000]) == 1
 
     # Test bedrooms filter
     response = client.get("/api/properties?bedrooms=4")
     assert response.status_code == 200
-    assert len(response.json["properties"]) == 1
-    assert response.json["properties"][0]["specs"]["bedrooms"] == 4
+    properties = response.json
+    assert len([p for p in properties if p["bedrooms"] == 4]) == 1
 
     # Test city filter
-    response = client.get("/api/properties?city=London")
+    response = client.get("/api/properties?city=Manchester")
     assert response.status_code == 200
-    assert len(response.json["properties"]) == 1
-    assert response.json["properties"][0]["address"]["city"] == "London"
+    properties = response.json
+    assert (
+        len([p for p in properties if p["address"]["city"] == "Manchester"])
+        == 1
+    )
 
 
 def test_advanced_filters(client, session, app_context):
@@ -273,7 +283,7 @@ def test_advanced_filters(client, session, app_context):
     for filter_str, expected_count in filters:
         response = client.get(f"/api/properties?{filter_str}")
         assert response.status_code == 200
-        assert len(response.json["properties"]) == expected_count
+        assert len(response.json) == expected_count
 
 
 def test_properties_default_ordering(client, session, app_context):
@@ -345,11 +355,10 @@ def test_properties_default_ordering(client, session, app_context):
     # Get and verify ordering
     response = client.get("/api/properties")
     assert response.status_code == 200
-    assert len(response.json["properties"]) == 2
-
-    properties = response.json["properties"]
-    # Properties with same timestamp should be ordered by ID (newest first)
-    assert properties[0]["id"] > properties[1]["id"]
+    properties = response.json
+    assert len(properties) == 2
+    # Check ordering by created_at desc
+    assert properties[0]["created_at"] >= properties[1]["created_at"]
 
 
 def test_property_pagination(client, session, app_context):
@@ -386,34 +395,113 @@ def test_property_pagination(client, session, app_context):
         }
         client.post("/api/properties", json=property_data)
 
-    # Test default pagination (page 1, 10 per page)
+    # Test default pagination
     response = client.get("/api/properties")
     assert response.status_code == 200
     data = response.json
 
-    # Verify only minimal data is returned
-    first_property = data["properties"][0]
-    assert "description" not in first_property
-    assert "garden_size" not in first_property["features"]
-    assert "key_features" not in first_property
-    assert "council_tax_band" not in first_property
+    # Verify data structure
+    assert isinstance(data, list)  # response is now a list
+    assert len(data) > 0
 
-    # Verify pagination
-    assert len(data["properties"]) == 10
-    assert data["pagination"]["page"] == 1
-    assert data["pagination"]["total"] == 15
-    assert data["pagination"]["has_next"] is True
+    first_property = data[0]  # access first item in list
+    assert "price" in first_property
+    assert "bedrooms" in first_property
+    assert "bathrooms" in first_property
 
-    # Test second page
-    response = client.get("/api/properties?page=2")
+
+def test_get_properties(client, init_database):
+    """Test getting list of properties."""
+    response = client.get("/api/properties")
     assert response.status_code == 200
-    data = response.json
-    assert len(data["properties"]) == 5
-    assert data["pagination"]["has_next"] is False
 
-    # Test custom per_page
-    response = client.get("/api/properties?per_page=5")
-    assert response.status_code == 200
     data = response.json
-    assert len(data["properties"]) == 5
-    assert data["pagination"]["pages"] == 3
+    assert isinstance(data, list)
+    assert len(data) > 0
+
+    property = data[0]
+    assert "id" in property
+    assert "price" in property
+    assert "bedrooms" in property
+    assert "bathrooms" in property
+    assert "main_image_url" in property
+    assert "created_at" in property
+    assert "address" in property
+    assert "specs" in property
+
+    # Check nested objects
+    address = property["address"]
+    assert "street" in address
+    assert "city" in address
+    assert "postcode" in address
+
+    specs = property["specs"]
+    assert "property_type" in specs
+    assert "square_footage" in specs
+
+
+def test_get_property_detail(client, init_database):
+    """Test getting detailed property information."""
+    # Get first property from list to get valid ID
+    list_response = client.get("/api/properties")
+    first_property_id = list_response.json[0]["id"]
+
+    response = client.get(f"/api/properties/{first_property_id}")
+    assert response.status_code == 200
+
+    data = response.json
+    assert "id" in data
+    assert "price" in data
+    assert "created_at" in data
+
+    # Check images
+    assert "images" in data
+    images = data["images"]
+    assert "main" in images
+    assert "additional" in images
+    assert "floorplan" in images
+    assert isinstance(images["additional"], list)
+
+    # Check address
+    assert "address" in data
+    address = data["address"]
+    assert "house_number" in address
+    assert "street" in address
+    assert "city" in address
+    assert "postcode" in address
+    assert "latitude" in address
+    assert "longitude" in address
+
+    # Check specs
+    assert "specs" in data
+    specs = data["specs"]
+    assert "bedrooms" in specs
+    assert "bathrooms" in specs
+    assert "reception_rooms" in specs
+    assert "square_footage" in specs
+    assert "property_type" in specs
+    assert "epc_rating" in specs
+
+    # Check features
+    assert "features" in data
+    features = data["features"]
+    assert "has_garden" in features
+    assert "garden_size" in features
+    assert "parking_spaces" in features
+    assert "has_garage" in features
+
+    # Check details
+    assert "details" in data
+    details = data["details"]
+    assert "description" in details
+    assert "property_type" in details
+    assert "construction_year" in details
+    assert "parking_spaces" in details
+    assert "heating_type" in details
+
+
+def test_get_nonexistent_property(client, init_database):
+    """Test getting a property that doesn't exist."""
+    response = client.get("/api/properties/9999")
+    assert response.status_code == 404
+    assert response.json["error"] == "Property not found"

@@ -19,18 +19,28 @@ class User(db.Model):
 @dataclass
 class Property(db.Model):
     __tablename__ = "properties"
-    __allow_unmapped__ = True  # Allow legacy annotations
+    __allow_unmapped__ = True
 
     id: Mapped[int] = mapped_column(primary_key=True)
     price: Mapped[int]
-    status: Mapped[str]
-    created_at: Mapped[datetime] = mapped_column(
-        default=datetime.now(UTC), index=True  # Add index for performance
-    )
+    bedrooms: Mapped[int]
+    bathrooms: Mapped[float]
+    main_image_url: Mapped[Optional[str]]
+    user_id: Mapped[Optional[int]] = mapped_column(db.ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now(UTC))
     last_updated: Mapped[datetime] = mapped_column(
         default=datetime.now(UTC), onupdate=datetime.now(UTC)
     )
+
+    # Relationships
     address: Mapped["Address"] = relationship(
+        back_populates="property", uselist=False, cascade="all, delete-orphan"
+    )
+    owner: Mapped[Optional["User"]] = relationship(back_populates="properties")
+    media: Mapped[List["PropertyMedia"]] = relationship(
+        back_populates="property", cascade="all, delete-orphan"
+    )
+    details: Mapped["PropertyDetail"] = relationship(
         back_populates="property", uselist=False, cascade="all, delete-orphan"
     )
     specs: Mapped["PropertySpecs"] = relationship(
@@ -39,20 +49,22 @@ class Property(db.Model):
     features: Mapped["PropertyFeatures"] = relationship(
         back_populates="property", uselist=False, cascade="all, delete-orphan"
     )
-    media: Mapped[List["PropertyMedia"]] = relationship(
-        back_populates="property", cascade="all, delete-orphan"
+
+
+class PropertyDetail(db.Model):
+    __tablename__ = "property_details"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    property_id: Mapped[int] = mapped_column(
+        db.ForeignKey("properties.id"), nullable=False, unique=True
     )
-    description: Mapped[str]
-    main_image_url: Mapped[Optional[str]]  # For list view
-    additional_image_urls: Mapped[Optional[List[str]]] = mapped_column(db.JSON)
-    floorplan_url: Mapped[Optional[str]]
-    ownership_type: Mapped[str]
-    leasehold_remaining: Mapped[Optional[int]]
-    property_age: Mapped[Optional[str]]
-    key_features: Mapped[List[str]] = mapped_column(db.JSON)
-    council_tax_band: Mapped[str]
-    user_id: Mapped[Optional[int]] = mapped_column(db.ForeignKey("users.id"))
-    owner: Mapped[Optional["User"]] = relationship(back_populates="properties")
+    description: Mapped[Optional[str]]
+    property_type: Mapped[Optional[str]]
+    construction_year: Mapped[Optional[int]]
+    parking_spaces: Mapped[Optional[int]]
+    heating_type: Mapped[Optional[str]]
+
+    property: Mapped["Property"] = relationship(back_populates="details")
 
 
 @dataclass
@@ -60,7 +72,9 @@ class Address(db.Model):
     __tablename__ = "addresses"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    property_id: Mapped[int] = mapped_column(db.ForeignKey("properties.id"))
+    property_id: Mapped[int] = mapped_column(
+        db.ForeignKey("properties.id"), unique=True
+    )
     house_number: Mapped[str]
     street: Mapped[str]
     city: Mapped[str]
@@ -68,7 +82,9 @@ class Address(db.Model):
     latitude: Mapped[Optional[float]]
     longitude: Mapped[Optional[float]]
 
-    property: Mapped["Property"] = relationship(back_populates="address")
+    property: Mapped["Property"] = relationship(
+        back_populates="address", foreign_keys=[property_id]
+    )
 
 
 @dataclass
@@ -108,7 +124,7 @@ class PropertyMedia(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     property_id: Mapped[int] = mapped_column(db.ForeignKey("properties.id"))
     image_url: Mapped[str]
-    is_main_image: Mapped[bool] = mapped_column(default=False)
-    image_type: Mapped[Optional[str]]
+    image_type: Mapped[str]  # e.g., 'additional', 'floorplan'
+    display_order: Mapped[Optional[int]]  # For ordering additional images
 
     property: Mapped["Property"] = relationship(back_populates="media")
