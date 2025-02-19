@@ -12,250 +12,175 @@ code {
 
 # MaiSON Property API
 
-A Flask-based REST API powering the MaiSON real estate platform.
+A RESTful API for managing property listings.
 
 ## API Endpoints
 
-### Examples
+### 1. List Properties (GET /api/properties)
+Retrieves a list of properties with optional filtering.
 
-#### Using curl
-
-List all properties:
 ```bash
-curl http://localhost:8080/api/properties
-```
+# Get all properties
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties
 
-Get a specific property:
-```bash
-curl http://localhost:8080/api/properties/1
-```
+# Filter by price range
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties?min_price=200000&max_price=500000
 
-Create a new property:
-```bash
-curl -X POST http://localhost:8080/api/properties \
-  -H "Content-Type: application/json" \
-  -d '{
-    "price": 350000,
-    "address": {
-      "house_number": "42",
-      "street": "Example Street",
-      "city": "London",
-      "postcode": "SW1 1AA"
-    },
-    "specs": {
-      "bedrooms": 3,
-      "bathrooms": 2,
-      "reception_rooms": 1,
-      "square_footage": 1200.0,
-      "property_type": "semi-detached",
-      "epc_rating": "B"
-    },
-    "details": {
-      "description": "A lovely property...",
-      "property_type": "semi-detached",
-      "construction_year": 2020,
-      "parking_spaces": 2,
-      "heating_type": "gas"
-    }
-  }'
-```
+# Filter by location
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties?city=London
 
-Update a property:
-```bash
-curl -X PUT http://localhost:8080/api/properties/1 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "price": 375000,
-    "specs": {
-      "bedrooms": 4,
-      "bathrooms": 2,
-      "reception_rooms": 2,
-      "square_footage": 1500.0,
-      "property_type": "semi-detached",
-      "epc_rating": "A"
-    }
-  }'
-```
+# Filter by features
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties?bedrooms=3&bathrooms=2
 
-Delete a property:
-```bash
-curl -X DELETE http://localhost:8080/api/properties/1
-```
-
-Filter properties:
-```bash
-# Properties over £400,000
-curl "http://localhost:8080/api/properties?min_price=400000"
-
-# Properties with 3+ bedrooms
-curl "http://localhost:8080/api/properties?bedrooms=3"
-
-# Properties in London with gardens
-curl "http://localhost:8080/api/properties?city=London&has_garden=true"
-```
-
-#### Using Python requests
-
-```python
-import requests
-
-# Base URL
-BASE_URL = "http://localhost:8080"
-
-# List all properties
-response = requests.get(f"{BASE_URL}/api/properties")
-properties = response.json()
-
-# Get specific property
-property_id = 1
-response = requests.get(f"{BASE_URL}/api/properties/{property_id}")
-property_detail = response.json()
-
-# Create new property
-new_property = {
-    "price": 350000,
-    "address": {
-        "house_number": "42",
-        "street": "Example Street",
-        "city": "London",
-        "postcode": "SW1 1AA"
-    },
-    "specs": {
-        "bedrooms": 3,
-        "bathrooms": 2,
-        "reception_rooms": 1,
-        "square_footage": 1200.0,
-        "property_type": "semi-detached",
-        "epc_rating": "B"
-    },
-    "details": {
-        "description": "A lovely property...",
-        "property_type": "semi-detached",
-        "construction_year": 2020,
-        "parking_spaces": 2,
-        "heating_type": "gas"
-    }
-}
-response = requests.post(f"{BASE_URL}/api/properties", json=new_property)
-created_property = response.json()
-
-# Update property
-update_data = {
-    "price": 375000,
-    "specs": {
-        "bedrooms": 4,
-        "bathrooms": 2,
-        "reception_rooms": 2,
-        "square_footage": 1500.0,
-        "property_type": "semi-detached",
-        "epc_rating": "A"
-    }
-}
-response = requests.put(f"{BASE_URL}/api/properties/{property_id}", json=update_data)
-
-# Delete property
-response = requests.delete(f"{BASE_URL}/api/properties/{property_id}")
-
-# Filter properties
-params = {
-    'min_price': 400000,
-    'bedrooms': 3,
-    'city': 'London',
-    'has_garden': True
-}
-response = requests.get(f"{BASE_URL}/api/properties", params=params)
-filtered_properties = response.json()
-```
-
-### List Properties
-`GET /api/properties`
-
-Query Parameters:
-- `min_price`: Minimum price (integer)
-- `bedrooms`: Minimum number of bedrooms (integer)
-- `bathrooms`: Minimum number of bathrooms (integer)
-- `city`: City name (string)
-- `has_garden`: Filter for properties with gardens (boolean)
-- `has_garage`: Filter for properties with garages (boolean)
-- `min_square_footage`: Minimum square footage (float)
-
-Returns a list of properties with basic information.
-
-Response:
-```
-[
-    {
-        "id": 1,
-        "price": 350000,
-        "bedrooms": 3,
-        "bathrooms": 2,
-        "main_image_url": "https://example.com/image.jpg",
-        "created_at": "2024-02-16T12:00:00",
-        "address": {
-            "street": "Test Street",
-            "city": "London",
-            "postcode": "SW1 1AA"
-        },
-        "specs": {
-            "property_type": "semi-detached",
-            "square_footage": 1200.0
+# Example Response
+{
+    "properties": [
+        {
+            "id": 1,
+            "price": 350000,
+            "bedrooms": 3,
+            "bathrooms": 2,
+            "main_image_url": "https://example.com/image.jpg",
+            "address": {
+                "city": "London",
+                "postcode": "SW1A 1AA"
+            },
+            "features": {
+                "has_garden": true,
+                "parking_spaces": 2
+            }
         }
-    }
-]
+    ]
+}
 ```
 
-### Get Property Details
-`GET /api/properties/<id>`
+### 2. Get Property Details (GET /api/properties/{id})
+Retrieves detailed information about a specific property.
 
-Returns detailed information about a specific property.
+```bash
+# Get property with ID 1
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties/1
 
-Response:
-```
+# Example Response
 {
     "id": 1,
     "price": 350000,
-    "created_at": "2024-02-16T12:00:00",
-    "images": {
-        "main": "https://example.com/main.jpg",
-        "additional": [
-            "https://example.com/image1.jpg",
-            "https://example.com/image2.jpg"
-        ],
-        "floorplan": "https://example.com/floorplan.pdf"
-    },
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "main_image_url": "https://example.com/image.jpg",
     "address": {
-        "house_number": "123",
-        "street": "Test Street",
+        "house_number": "42",
+        "street": "High Street",
         "city": "London",
-        "postcode": "SW1 1AA",
-        "latitude": 51.5074,
-        "longitude": -0.1278
+        "postcode": "SW1A 1AA"
     },
     "specs": {
-        "bedrooms": 3,
-        "bathrooms": 2,
-        "reception_rooms": 2,
-        "square_footage": 1200.0,
+        "square_footage": 1200,
         "property_type": "semi-detached",
         "epc_rating": "B"
     },
     "features": {
         "has_garden": true,
-        "garden_size": 100.0,
+        "garden_size": 100,
         "parking_spaces": 2,
         "has_garage": true
     },
     "details": {
-        "description": "A stunning 3 bedroom property...",
-        "property_type": "semi-detached",
-        "construction_year": 1990,
-        "parking_spaces": 2,
-        "heating_type": "Gas Central"
-    }
+        "description": "Beautiful family home...",
+        "construction_year": 2010
+    },
+    "media": [
+        {
+            "image_url": "https://example.com/image1.jpg",
+            "image_type": "additional"
+        }
+    ]
 }
 ```
 
+### 3. Create Property (POST /api/properties)
+Creates a new property listing.
+
+```bash
+# Create new property
+curl -X POST https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties \
+  -H "Content-Type: application/json" \
+  -d '{
+    "price": 350000,
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "address": {
+        "house_number": "42",
+        "street": "High Street",
+        "city": "London",
+        "postcode": "SW1A 1AA"
+    },
+    "specs": {
+        "square_footage": 1200,
+        "property_type": "semi-detached",
+        "epc_rating": "B"
+    }
+  }'
+
+# Example Response
+{
+    "id": 1,
+    "message": "Property created successfully"
+}
+```
+
+### 4. Update Property (PUT /api/properties/{id})
+Updates an existing property listing.
+
+```bash
+# Update property with ID 1
+curl -X PUT https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "price": 375000,
+    "features": {
+        "has_garden": true,
+        "parking_spaces": 2
+    }
+  }'
+
+# Example Response
+{
+    "message": "Property updated successfully"
+}
+```
+
+### 5. Delete Property (DELETE /api/properties/{id})
+Removes a property listing.
+
+```bash
+# Delete property with ID 1
+curl -X DELETE https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties/1
+
+# Example Response
+{
+    "message": "Property deleted successfully"
+}
+```
+
+## Query Parameters
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| min_price | int | Minimum price | ?min_price=200000 |
+| max_price | int | Maximum price | ?max_price=500000 |
+| bedrooms | int | Number of bedrooms | ?bedrooms=3 |
+| bathrooms | int | Number of bathrooms | ?bathrooms=2 |
+| city | string | City location | ?city=London |
+| property_type | string | Type of property | ?property_type=semi-detached |
+| has_garden | bool | Has garden | ?has_garden=true |
+| parking_spaces | int | Minimum parking spaces | ?parking_spaces=2 |
+
 ## Setup
+
+### Requirements
++ - Python 3.11.7
+  - PostgreSQL 14+
 
 ### Database Setup
 

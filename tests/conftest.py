@@ -17,19 +17,17 @@ def app():
     """Create application for the tests."""
     app = create_app("testing")
 
+    # Create tables for test database
     with app.app_context():
         db.create_all()
-
-    yield app
-
-    with app.app_context():
+        yield app
         db.session.remove()
         db.drop_all()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def client(app):
-    """Test client for making requests."""
+    """Create a test client."""
     return app.test_client()
 
 
@@ -37,6 +35,13 @@ def client(app):
 def runner(app):
     """Test runner for CLI commands."""
     return app.test_cli_runner()
+
+
+@pytest.fixture(scope="function")
+def app_context(app):
+    """Create an application context."""
+    with app.app_context():
+        yield
 
 
 @pytest.fixture(scope="function")
@@ -152,38 +157,56 @@ def init_database(app):
 
 
 @pytest.fixture(scope="function")
-def app_context(app):
-    """Create fresh database tables."""
+def session(app):
+    """Create a new database session for a test."""
     with app.app_context():
-        db.create_all()
-        yield
-        db.session.remove()
+        # Start transaction
+        db.session.begin_nested()
+
+        # Create fresh tables
         db.drop_all()
+        db.create_all()
 
-
-@pytest.fixture(scope="function")
-def session(app_context, app):
-    """Database session for tests."""
-    with app.app_context():
         yield db.session
+
+        # Rollback transaction
+        db.session.rollback()
+        db.session.remove()
 
 
 @pytest.fixture
 def sample_property():
     """Sample property data for tests."""
-    property_data = {
+    return {
         "price": 350000,
-        "address": "123 Test Street, London, SW1 1AA",
         "bedrooms": 3,
         "bathrooms": 2,
-        "reception_rooms": 1,
-        "square_footage": 1200.0,
-        "property_type": "semi-detached",
-        "epc_rating": "B",
-        "main_image_url": "https://test-images.com/property1.jpg",
-        "description": "A test property description",
-        "ownership_type": "freehold",
-        "key_features": ["Feature 1", "Feature 2"],
-        "council_tax_band": "D",
+        "main_image_url": "https://example.com/main.jpg",
+        "address": {
+            "house_number": "123",
+            "street": "Test Street",
+            "city": "London",
+            "postcode": "SW1 1AA",
+        },
+        "specs": {
+            "bedrooms": 3,
+            "bathrooms": 2,
+            "reception_rooms": 1,
+            "square_footage": 1200.0,
+            "property_type": "semi-detached",
+            "epc_rating": "B",
+        },
+        "features": {
+            "has_garden": True,
+            "garden_size": 100.0,
+            "parking_spaces": 2,
+            "has_garage": True,
+        },
+        "details": {
+            "description": "A lovely property",
+            "property_type": "semi-detached",
+            "construction_year": 1990,
+            "parking_spaces": 2,
+            "heating_type": "Gas Central",
+        },
     }
-    return property_data

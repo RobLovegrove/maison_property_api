@@ -1,7 +1,7 @@
 from app import db
 from dataclasses import dataclass
 from typing import List, Optional
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -12,7 +12,9 @@ class User(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(unique=True)
     name: Mapped[str]
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(
+        default=datetime.now(timezone.utc)
+    )
     properties: Mapped[List["Property"]] = relationship(back_populates="owner")
 
 
@@ -27,9 +29,11 @@ class Property(db.Model):
     bathrooms: Mapped[float]
     main_image_url: Mapped[Optional[str]]
     user_id: Mapped[Optional[int]] = mapped_column(db.ForeignKey("users.id"))
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(
+        default=datetime.now(timezone.utc)
+    )
     last_updated: Mapped[datetime] = mapped_column(
-        default=datetime.now(UTC), onupdate=datetime.now(UTC)
+        default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
     )
 
     # Relationships

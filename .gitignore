@@ -28,3 +28,6 @@ TODO.md
 
 .pytest_cache/
 .coverage
+
+# Scripts with sensitive data
+scripts/deploy_to_azure.sh

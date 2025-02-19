@@ -1,34 +1,44 @@
 import os
 from dotenv import load_dotenv
 
+basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv()
 
 
 class Config:
-    SECRET_KEY = os.environ.get("SECRET_KEY") or "dev"
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    """Base configuration."""
+
+    SECRET_KEY = os.environ.get("SECRET_KEY", "dev")
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_MIGRATE_REPO = os.path.join(basedir, "..", "migrations")
 
 
-class TestingConfig(Config):
+class TestConfig(Config):
+    """Test configuration."""
+
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = (
-        "postgresql://postgres:postgres@localhost:5432/maison_test"
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
+        "TEST_DATABASE_URL", "postgresql://roblovegrove@localhost:5432/test_db"
     )
 
 
 class DevelopmentConfig(Config):
+    """Development configuration."""
+
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
 
 
 class ProductionConfig(Config):
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
+    """Production configuration."""
+
+    DEBUG = False
 
 
+# Configuration dictionary
 config = {
     "development": DevelopmentConfig,
-    "testing": TestingConfig,
+    "testing": TestConfig,
     "production": ProductionConfig,
     "default": DevelopmentConfig,
 }

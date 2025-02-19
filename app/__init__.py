@@ -23,12 +23,27 @@ def create_app(config_name="default"):
         app.logger.debug("Body: %s", request.get_data())
         app.logger.debug("URL: %s", request.url)
 
+    # Configure CORS
+    CORS(
+        app,
+        resources={
+            r"/api/*": {
+                "origins": [
+                    "http://localhost:5137",
+                    "https://www.maisonai.co.uk",
+                    "http://localhost:3000",
+                ],
+                "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                "allow_headers": ["Content-Type", "Authorization"],
+            }
+        },
+    )
+
     # Initialize extensions with app context
     db.init_app(app)
-    migrate.init_app(app)
-    CORS(app)
+    migrate.init_app(app, db)
 
-    # Register blueprints/routes - properties first for route precedence
+    # Register blueprints/routes
     from app.properties import bp as properties_bp
 
     app.register_blueprint(properties_bp, url_prefix="/api/properties")
