@@ -42,16 +42,38 @@ def index():
                 margin: 0 auto;
                 padding: 45px;
             }
+
             @media (max-width: 767px) {
                 .markdown-body {
                     padding: 15px;
                 }
             }
-            .markdown-body pre code {
-                color: #ffffff !important;
+
+            /* Light mode styles */
+            @media (prefers-color-scheme: light) {
+                .markdown-body pre code {
+                    color: #24292e !important;
+                }
+                .markdown-body code {
+                    color: #24292e !important;
+                }
             }
-            .markdown-body code {
-                color: #ffffff !important;
+
+            /* Dark mode styles */
+            @media (prefers-color-scheme: dark) {
+                .markdown-body pre code {
+                    color: #ffffff !important;
+                }
+                .markdown-body code {
+                    color: #ffffff !important;
+                }
+                body {
+                    background-color: #0d1117;
+                }
+                .markdown-body {
+                    color-scheme: dark;
+                    color: #c9d1d9;
+                }
             }
         </style>
     </head>

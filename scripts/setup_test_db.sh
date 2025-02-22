@@ -52,6 +52,22 @@ with app.app_context():
 echo "Verifying database tables..."
 psql -h localhost -U roblovegrove -d test_db -c "\dt"
 
+echo "Cleaning up existing tables..."
+psql -h localhost -U roblovegrove -d test_db -c "
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO roblovegrove;
+GRANT ALL ON SCHEMA public TO public;
+"
+
+echo "Creating fresh tables..."
+python3 -c "
+from app import create_app, db
+app = create_app('testing')
+with app.app_context():
+    db.create_all()
+"
+
 echo "Running tests..."
 pytest -v --tb=short
 

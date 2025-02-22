@@ -7,12 +7,31 @@ from app.models import (
     PropertyFeatures,
     PropertyMedia,
     PropertyDetail,
+    User,
 )
 from datetime import datetime, UTC
 from sqlalchemy.sql import select
 from sqlalchemy.orm import joinedload
+from flask_caching import Cache
+from app.schemas import (
+    PropertyCreateSchema,
+    PropertyUpdateSchema,
+    PropertyListSchema,
+)
+from marshmallow import ValidationError
+from app.utils import geocode_address
+from app.exceptions import GeocodeError, UserNotFoundError
+from sqlalchemy.exc import IntegrityError
 
 bp = Blueprint("properties", __name__)
+
+# Initialize cache in __init__.py
+cache = Cache(
+    config={
+        "CACHE_TYPE": "simple",  # For development
+        "CACHE_DEFAULT_TIMEOUT": 300,  # 5 minutes
+    }
+)
 
 
 def validate_property_data(data):
@@ -115,301 +134,218 @@ def get_properties():
 
         properties = list(db.session.execute(query).scalars())
 
-        return jsonify(
-            [
-                {
-                    "id": p.id,
-                    "price": p.price,
-                    "bedrooms": p.specs.bedrooms if p.specs else None,
-                    "bathrooms": p.specs.bathrooms if p.specs else None,
-                    "main_image_url": p.main_image_url,
-                    "created_at": (
-                        p.created_at.isoformat() if p.created_at else None
-                    ),
-                    "address": (
-                        {
-                            "street": p.address.street,
-                            "city": p.address.city,
-                            "postcode": p.address.postcode,
-                        }
-                        if p.address
-                        else None
-                    ),
-                    "specs": (
-                        {
-                            "property_type": p.specs.property_type,
-                            "square_footage": p.specs.square_footage,
-                        }
-                        if p.specs
-                        else None
-                    ),
-                }
-                for p in properties
-            ]
-        )
+        # Serialize response using schema
+        schema = PropertyListSchema(many=True)
+        return jsonify(schema.dump(properties))
 
     except Exception as e:
         current_app.logger.error(f"Error in get_properties: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
 
 
-@bp.route("/<int:property_id>", methods=["GET"])
+@bp.route("/<uuid:property_id>", methods=["GET"])
 def get_property(property_id):
-    try:
-        current_app.logger.info(f"Fetching property with ID: {property_id}")
-        property_item = (
-            db.session.execute(
-                select(Property)
-                .options(
-                    joinedload(Property.address),
-                    joinedload(Property.specs),
-                    joinedload(Property.features),
-                    joinedload(Property.details),
-                    joinedload(Property.media),
-                )
-                .filter(Property.id == property_id)
-            )
-            .unique()
-            .scalar_one_or_none()
-        )
+    """Get a single property by ID."""
+    property_item = db.session.get(Property, property_id)
+    if property_item is None:
+        return jsonify({"error": "Property not found"}), 404
 
-        if property_item is None:
-            return jsonify({"error": "Property not found"}), 404
-
-        # Get additional images ordered by display_order
-        try:
-            additional_images = (
-                [
-                    media.image_url
-                    for media in sorted(
-                        [
-                            m
-                            for m in property_item.media
-                            if m.image_type == "additional"
-                        ],
-                        key=lambda m: (
-                            m.display_order is None,
-                            m.display_order,
-                        ),
-                    )
-                ]
-                if property_item.media
-                else []
-            )
-        except Exception as img_error:
-            current_app.logger.error(
-                f"Error processing additional images: {str(img_error)}"
-            )
-            additional_images = []
-
-        # Get floorplan
-        try:
-            floorplan = (
-                next(
-                    (
-                        media.image_url
-                        for media in property_item.media
-                        if media.image_type == "floorplan"
-                    ),
-                    None,
-                )
-                if property_item.media
-                else None
-            )
-        except Exception as floor_error:
-            current_app.logger.error(
-                f"Error processing floorplan: {str(floor_error)}"
-            )
-            floorplan = None
-
-        response = {
-            "id": property_item.id,
-            "price": property_item.price,
-            "created_at": (
-                property_item.created_at.isoformat()
-                if property_item.created_at
-                else None
-            ),
-            "address": (
-                {
+    # Return property data with just owner_id
+    return (
+        jsonify(
+            {
+                "id": str(property_item.id),
+                "price": property_item.price,
+                "bedrooms": property_item.bedrooms,
+                "bathrooms": property_item.bathrooms,
+                "main_image_url": property_item.main_image_url,
+                "created_at": property_item.created_at.isoformat(),
+                "owner_id": property_item.user_id,  # Just return the ID
+                "address": {
                     "house_number": property_item.address.house_number,
                     "street": property_item.address.street,
                     "city": property_item.address.city,
                     "postcode": property_item.address.postcode,
                     "latitude": property_item.address.latitude,
                     "longitude": property_item.address.longitude,
-                }
-                if property_item.address
-                else None
-            ),
-            "specs": (
-                {
+                },
+                "specs": {
                     "bedrooms": property_item.specs.bedrooms,
                     "bathrooms": property_item.specs.bathrooms,
                     "reception_rooms": property_item.specs.reception_rooms,
                     "square_footage": property_item.specs.square_footage,
                     "property_type": property_item.specs.property_type,
                     "epc_rating": property_item.specs.epc_rating,
-                }
-                if property_item.specs
-                else None
-            ),
-            "features": (
-                {
-                    "has_garden": property_item.features.has_garden,
-                    "garden_size": property_item.features.garden_size,
-                    "parking_spaces": property_item.features.parking_spaces,
-                    "has_garage": property_item.features.has_garage,
-                }
-                if property_item.features
-                else None
-            ),
-            "details": (
-                {
-                    "description": property_item.details.description,
-                    "property_type": property_item.details.property_type,
-                    "construction_year": (
-                        property_item.details.construction_year
-                    ),
-                    "parking_spaces": property_item.details.parking_spaces,
-                    "heating_type": property_item.details.heating_type,
-                }
-                if property_item.details
-                else None
-            ),
-            "images": {
-                "main": property_item.main_image_url,
-                "additional": additional_images,
-                "floorplan": floorplan,
-            },
-        }
-        return jsonify(response)
-    except Exception as e:
-        current_app.logger.exception(f"Error in get_property: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
+                },
+            }
+        ),
+        200,
+    )
 
 
 @bp.route("", methods=["POST"])
 def create_property():
     data = request.get_json()
 
-    # Validate input data
-    errors = validate_property_data(data)
-    if errors:
-        return jsonify({"errors": errors}), 400
+    if not data:
+        return jsonify({"error": "No JSON data provided"}), 400
+
+    # Validate input data using marshmallow
+    schema = PropertyCreateSchema()
+    try:
+        validated_data = schema.load(data)
+    except ValidationError as err:
+        return (
+            jsonify({"error": "Validation error", "details": err.messages}),
+            400,
+        )
 
     try:
-        # Create main property
+        # Verify user exists
+        user = db.session.get(User, validated_data["user_id"])
+        if not user:
+            raise UserNotFoundError(
+                f"User {validated_data['user_id']} not found"
+            )
+
+        # Create property with bedrooms/bathrooms from specs
         property = Property(
-            price=data["price"],
-            bedrooms=data["specs"]["bedrooms"],
-            bathrooms=data["specs"]["bathrooms"],
-            main_image_url=data.get("main_image_url"),
+            price=validated_data["price"],
+            main_image_url=validated_data.get("main_image_url"),
+            user_id=validated_data["user_id"],
+            bedrooms=validated_data["specs"]["bedrooms"],
+            bathrooms=validated_data["specs"]["bathrooms"],
             created_at=datetime.now(UTC),
             last_updated=datetime.now(UTC),
         )
         db.session.add(property)
 
+        # Get address data and coordinates
+        addr_data = validated_data["address"]
+        try:
+            lat, lon = geocode_address(
+                addr_data["house_number"],
+                addr_data["street"],
+                addr_data["city"],
+                addr_data["postcode"],
+            )
+        except GeocodeError as e:
+            current_app.logger.warning(f"Geocoding failed: {str(e)}")
+            lat, lon = None, None
+
         # Create address
         address = Address(
-            property=property,
-            house_number=data["address"]["house_number"],
-            street=data["address"]["street"],
-            city=data["address"]["city"],
-            postcode=data["address"]["postcode"],
+            property=property, **addr_data, latitude=lat, longitude=lon
         )
         db.session.add(address)
 
         # Create specs
-        specs = PropertySpecs(
-            property=property,
-            bedrooms=data["specs"]["bedrooms"],
-            bathrooms=data["specs"]["bathrooms"],
-            reception_rooms=data["specs"]["reception_rooms"],
-            square_footage=data["specs"]["square_footage"],
-            property_type=data["specs"]["property_type"],
-            epc_rating=data["specs"]["epc_rating"],
-        )
+        specs = PropertySpecs(property=property, **validated_data["specs"])
         db.session.add(specs)
 
-        # Create features
-        if "features" in data:
+        # Create optional related objects
+        if "features" in validated_data:
             features = PropertyFeatures(
-                property=property,
-                has_garden=data["features"].get("has_garden", False),
-                garden_size=data["features"].get("garden_size"),
-                parking_spaces=data["features"].get("parking_spaces", 0),
-                has_garage=data["features"].get("has_garage", False),
+                property=property, **validated_data["features"]
             )
             db.session.add(features)
 
-        # Create details
-        if "details" in data:
+        if "details" in validated_data:
             details = PropertyDetail(
-                property=property,
-                description=data["details"]["description"],
-                property_type=data["details"]["property_type"],
-                construction_year=data["details"]["construction_year"],
-                parking_spaces=data["details"]["parking_spaces"],
-                heating_type=data["details"]["heating_type"],
+                property=property, **validated_data["details"]
             )
             db.session.add(details)
 
-        # Create media entries if provided
-        if "media" in data:
-            for image_data in data["media"]:
-                media = PropertyMedia(
-                    property=property,
-                    image_url=image_data["url"],
-                    is_main_image=image_data.get("is_main_image", False),
-                    image_type=image_data.get("type", "interior"),
-                )
+        if "media" in validated_data:
+            for media_item in validated_data["media"]:
+                media = PropertyMedia(property=property, **media_item)
                 db.session.add(media)
 
-        db.session.commit()
-        return jsonify({"id": property.id}), 201
+        try:
+            db.session.commit()
+        except IntegrityError as e:
+            db.session.rollback()
+            current_app.logger.error(f"Database integrity error: {str(e)}")
+            return (
+                jsonify(
+                    {
+                        "error": "Database error",
+                        "message": (
+                            "Could not create property "
+                            "due to data constraints"
+                        ),
+                    }
+                ),
+                400,
+            )
 
+        return (
+            jsonify(
+                {
+                    "id": property.id,
+                    "message": "Property created successfully",
+                    "warnings": (
+                        [] if (lat and lon) else ["Could not geocode address"]
+                    ),
+                }
+            ),
+            201,
+        )
+
+    except UserNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except GeocodeError as e:
+        return jsonify({"error": "Geocoding error", "message": str(e)}), 500
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error creating property: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.error(
+            f"Unexpected error creating property: {str(e)}"
+        )
+        return (
+            jsonify(
+                {
+                    "error": "Internal server error",
+                    "message": "An unexpected error occurred",
+                }
+            ),
+            500,
+        )
 
 
-@bp.route("/<int:property_id>", methods=["PUT"])
+@bp.route("/<uuid:property_id>", methods=["PUT"])
 def update_property(property_id):
+    """Update a property."""
     property_item = db.session.get(Property, property_id)
     if property_item is None:
         return jsonify({"error": "Property not found"}), 404
 
     data = request.get_json()
 
+    # Validate update data
+    schema = PropertyUpdateSchema()
+    try:
+        validated_data = schema.load(data)
+    except ValidationError as err:
+        return jsonify({"errors": err.messages}), 400
+
     try:
         # Update main property
-        if "price" in data:
-            property_item.price = data["price"]
-        if "description" in data:
-            property_item.description = data["description"]
+        for key, value in validated_data.items():
+            if key not in ("address", "specs", "features", "details", "media"):
+                setattr(property_item, key, value)
 
-        # Update address
-        if "address" in data:
-            addr = data["address"]
-            if property_item.address:
-                for key, value in addr.items():
-                    setattr(property_item.address, key, value)
+        # Update related objects
+        if "address" in validated_data and property_item.address:
+            for key, value in validated_data["address"].items():
+                setattr(property_item.address, key, value)
 
-        # Update specs
-        if "specs" in data:
-            specs = data["specs"]
-            if property_item.specs:
-                for key, value in specs.items():
-                    setattr(property_item.specs, key, value)
+        if "specs" in validated_data and property_item.specs:
+            for key, value in validated_data["specs"].items():
+                setattr(property_item.specs, key, value)
 
-        # Update features
-        if "features" in data:
-            features = data["features"]
-            if property_item.features:
-                for key, value in features.items():
-                    setattr(property_item.features, key, value)
+        if "features" in validated_data and property_item.features:
+            for key, value in validated_data["features"].items():
+                setattr(property_item.features, key, value)
 
         db.session.commit()
         return jsonify({"message": "Property updated successfully"})
@@ -418,8 +354,9 @@ def update_property(property_id):
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route("/<int:property_id>", methods=["DELETE"])
+@bp.route("/<uuid:property_id>", methods=["DELETE"])
 def delete_property(property_id):
+    """Delete a property."""
     property_item = db.session.get(Property, property_id)
     if property_item is None:
         return jsonify({"error": "Property not found"}), 404
@@ -432,3 +369,19 @@ def delete_property(property_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/user/<int:user_id>", methods=["GET"])
+def get_user_properties(user_id):
+    """Get all properties for a specific user."""
+    # Check if user exists
+    user = db.session.get(User, user_id)
+    if user is None:
+        return jsonify({"error": "User not found"}), 404
+
+    # Get all properties for this user
+    properties = Property.query.filter_by(user_id=user_id).all()
+
+    # Use the PropertyListSchema to format the response
+    schema = PropertyListSchema(many=True)
+    return jsonify(schema.dump(properties)), 200

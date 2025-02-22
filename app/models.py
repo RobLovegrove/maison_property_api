@@ -3,6 +3,9 @@ from dataclasses import dataclass
 from typing import List, Optional
 from datetime import datetime, timezone
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from uuid import uuid4
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy_utils import UUIDType
 
 
 @dataclass
@@ -23,12 +26,16 @@ class Property(db.Model):
     __tablename__ = "properties"
     __allow_unmapped__ = True
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[UUID] = mapped_column(
+        UUIDType(binary=False), primary_key=True, default=uuid4
+    )
     price: Mapped[int]
     bedrooms: Mapped[int]
     bathrooms: Mapped[float]
     main_image_url: Mapped[Optional[str]]
-    user_id: Mapped[Optional[int]] = mapped_column(db.ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(
+        db.ForeignKey("users.id"), nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc)
     )
@@ -59,8 +66,11 @@ class PropertyDetail(db.Model):
     __tablename__ = "property_details"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    property_id: Mapped[int] = mapped_column(
-        db.ForeignKey("properties.id"), nullable=False, unique=True
+    property_id: Mapped[UUID] = mapped_column(
+        UUIDType(binary=False),
+        db.ForeignKey("properties.id"),
+        nullable=False,
+        unique=True,
     )
     description: Mapped[Optional[str]]
     property_type: Mapped[Optional[str]]
@@ -76,8 +86,8 @@ class Address(db.Model):
     __tablename__ = "addresses"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    property_id: Mapped[int] = mapped_column(
-        db.ForeignKey("properties.id"), unique=True
+    property_id: Mapped[UUID] = mapped_column(
+        UUIDType(binary=False), db.ForeignKey("properties.id"), unique=True
     )
     house_number: Mapped[str]
     street: Mapped[str]
@@ -96,7 +106,9 @@ class PropertySpecs(db.Model):
     __tablename__ = "property_specs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    property_id: Mapped[int] = mapped_column(db.ForeignKey("properties.id"))
+    property_id: Mapped[UUID] = mapped_column(
+        UUIDType(binary=False), db.ForeignKey("properties.id")
+    )
     bedrooms: Mapped[int]
     bathrooms: Mapped[int]
     reception_rooms: Mapped[int]
@@ -112,7 +124,9 @@ class PropertyFeatures(db.Model):
     __tablename__ = "property_features"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    property_id: Mapped[int] = mapped_column(db.ForeignKey("properties.id"))
+    property_id: Mapped[UUID] = mapped_column(
+        UUIDType(binary=False), db.ForeignKey("properties.id")
+    )
     has_garden: Mapped[bool] = mapped_column(default=False)
     garden_size: Mapped[Optional[float]]
     parking_spaces: Mapped[int] = mapped_column(default=0)
@@ -126,7 +140,9 @@ class PropertyMedia(db.Model):
     __tablename__ = "property_media"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    property_id: Mapped[int] = mapped_column(db.ForeignKey("properties.id"))
+    property_id: Mapped[UUID] = mapped_column(
+        UUIDType(binary=False), db.ForeignKey("properties.id")
+    )
     image_url: Mapped[str]
     image_type: Mapped[str]  # e.g., 'additional', 'floorplan'
     display_order: Mapped[Optional[int]]  # For ordering additional images

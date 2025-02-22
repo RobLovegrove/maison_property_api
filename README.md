@@ -10,156 +10,74 @@ code {
 }
 </style>
 
-# MaiSON Property API
+# Properties API
 
-A RESTful API for managing property listings.
+A Flask-based REST API for managing property listings.
 
 ## API Endpoints
 
-### 1. List Properties (GET /api/properties)
-Retrieves a list of properties with optional filtering.
+### Properties
 
-```bash
-# Get all properties
-curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties
+#### GET /api/properties
+Get a list of all properties
+- Optional query parameters for filtering:
+  - min_price
+  - max_price
+  - property_type
+  - min_bedrooms
+  - postcode
 
-# Filter by price range
-curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties?min_price=200000&max_price=500000
+#### GET /api/properties/<uuid:property_id>
+Get details of a specific property
+- Returns property details including owner_id, address, and specifications
+- Returns 404 if property not found
 
-# Filter by location
-curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties?city=London
+#### GET /api/properties/user/<int:user_id>
+Get all properties for a specific user
+- Returns array of properties owned by the user
+- Returns 404 if user not found
 
-# Filter by features
-curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties?bedrooms=3&bathrooms=2
+#### POST /api/properties
+Create a new property listing
+- Required fields in request body:
+  - price (integer)
+  - user_id (integer)
+  - address (object)
+  - specs (object)
+- Optional fields:
+  - features (object)
+  - details (object)
+  - media (array)
 
-# Example Response
+#### PUT /api/properties/<uuid:property_id>
+Update an existing property
+- Any fields from the POST schema can be updated
+- Returns 404 if property not found
+
+#### DELETE /api/properties/<uuid:property_id>
+Delete a property
+- Returns 404 if property not found
+
+### Response Format Example
+
+```json
 {
-    "properties": [
-        {
-            "id": 1,
-            "price": 350000,
-            "bedrooms": 3,
-            "bathrooms": 2,
-            "main_image_url": "https://example.com/image.jpg",
-            "address": {
-                "city": "London",
-                "postcode": "SW1A 1AA"
-            },
-            "features": {
-                "has_garden": true,
-                "parking_spaces": 2
-            }
-        }
-    ]
-}
-```
-
-### 2. Get Property Details (GET /api/properties/{id})
-Retrieves detailed information about a specific property.
-
-```bash
-# Get property with ID 1
-curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties/1
-
-# Example Response
-{
-    "id": 1,
-    "price": 350000,
-    "bedrooms": 3,
-    "bathrooms": 2,
-    "main_image_url": "https://example.com/image.jpg",
-    "address": {
-        "house_number": "42",
-        "street": "High Street",
-        "city": "London",
-        "postcode": "SW1A 1AA"
-    },
-    "specs": {
-        "square_footage": 1200,
-        "property_type": "semi-detached",
-        "epc_rating": "B"
-    },
-    "features": {
-        "has_garden": true,
-        "garden_size": 100,
-        "parking_spaces": 2,
-        "has_garage": true
-    },
-    "details": {
-        "description": "Beautiful family home...",
-        "construction_year": 2010
-    },
-    "media": [
-        {
-            "image_url": "https://example.com/image1.jpg",
-            "image_type": "additional"
-        }
-    ]
-}
-```
-
-### 3. Create Property (POST /api/properties)
-Creates a new property listing.
-
-```bash
-# Create new property
-curl -X POST https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties \
-  -H "Content-Type: application/json" \
-  -d '{
-    "price": 350000,
-    "bedrooms": 3,
-    "bathrooms": 2,
-    "address": {
-        "house_number": "42",
-        "street": "High Street",
-        "city": "London",
-        "postcode": "SW1A 1AA"
-    },
-    "specs": {
-        "square_footage": 1200,
-        "property_type": "semi-detached",
-        "epc_rating": "B"
-    }
-  }'
-
-# Example Response
-{
-    "id": 1,
-    "message": "Property created successfully"
-}
-```
-
-### 4. Update Property (PUT /api/properties/{id})
-Updates an existing property listing.
-
-```bash
-# Update property with ID 1
-curl -X PUT https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties/1 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "price": 375000,
-    "features": {
-        "has_garden": true,
-        "parking_spaces": 2
-    }
-  }'
-
-# Example Response
-{
-    "message": "Property updated successfully"
-}
-```
-
-### 5. Delete Property (DELETE /api/properties/{id})
-Removes a property listing.
-
-```bash
-# Delete property with ID 1
-curl -X DELETE https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties/1
-
-# Example Response
-{
-    "message": "Property deleted successfully"
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "price": 350000,
+  "bedrooms": 3,
+  "bathrooms": 2,
+  "main_image_url": "https://example.com/image.jpg",
+  "created_at": "2024-02-22T12:00:00Z",
+  "owner_id": 1,
+  "address": {
+    "street": "Sample Street",
+    "city": "London",
+    "postcode": "SW1 1AA"
+  },
+  "specs": {
+    "property_type": "semi-detached",
+    "square_footage": 1200.0
+  }
 }
 ```
 
@@ -176,51 +94,58 @@ curl -X DELETE https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.
 | has_garden | bool | Has garden | ?has_garden=true |
 | parking_spaces | int | Minimum parking spaces | ?parking_spaces=2 |
 
+## Recent Updates
+
+1. **UUID Implementation**
+   - Properties now use UUID primary keys instead of sequential integers
+   - All property references use UUIDs for better scalability
+
+2. **Enhanced Validation**
+   - Added Marshmallow schemas for request validation
+   - Improved error messages and validation feedback
+
+3. **Geocoding Support**
+   - Automatic geocoding of property addresses
+   - Latitude/longitude added to address records
+   - Graceful handling of geocoding failures
+
+4. **Required User Association**
+   - Properties must now be associated with a user
+   - User ID required for property creation
+
+5. **Error Handling**
+   - Comprehensive error handling for all endpoints
+   - Detailed error messages and appropriate HTTP status codes
+   - Warning messages for non-fatal issues
+
 ## Setup
 
 ### Requirements
-+ - Python 3.11.7
-  - PostgreSQL 14+
+- Python 3.11.7
+- PostgreSQL 14+
+- Required Python packages in requirements.txt
 
-### Database Setup
+### Installation
+```bash
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+.venv\Scripts\activate     # Windows
 
-1. Create a local test database (for running tests):
-```
-createdb maison_test
-```
+# Install dependencies
+pip install -r requirements.txt
 
-2. Create a `.env` file with your Azure database credentials:
-```
-# .env
-DATABASE_URL=postgresql://username:password@host:port/database?sslmode=require
-```
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your database credentials
 
-Note: Contact the team for the actual database credentials. Never commit the `.env` file to version control.
-
-3. Initialize database schema:
-```
+# Initialize database
 flask db upgrade
 ```
 
-### Running the API
-
-1. Start the API server (uses Azure database):
-```
-./scripts/run.sh
-```
-
-The API will be available at `http://localhost:8080`
-
-### Testing
-
-Run the test suite (uses local test database):
-```
-./scripts/setup_test_db.sh
-```
-
-Or run specific tests:
-```
-pytest tests/test_properties.py
+### Running Tests
+```bash
+pytest tests/
 ```
 
 ### Database Structure
