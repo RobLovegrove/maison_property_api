@@ -73,10 +73,11 @@ def init_database(app, session, test_user):
         bedrooms=3,
         bathrooms=2.0,
         user_id=test_user.id,
-        main_image_url=("https://maisonblobstorage.blob.core.windows.net/"
-                        "property-images/"
-                        "0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg"
-                        ),
+        main_image_url=(
+            "https://maisonblobstorage.blob.core.windows.net/"
+            "property-images/"
+            "0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg"
+        ),
         created_at=datetime.now(UTC),
         last_updated=datetime.now(UTC),
     )
@@ -88,17 +89,21 @@ def init_database(app, session, test_user):
     media = [
         PropertyMedia(
             property=property,
-            image_url=("https://maisonblobstorage.blob.core.windows.net/"
-                       "property-images/"
-                       "0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg"),
+            image_url=(
+                "https://maisonblobstorage.blob.core.windows.net/"
+                "property-images/"
+                "0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg"
+            ),
             image_type="main",
             display_order=1,
         ),
         PropertyMedia(
             property=property,
-            image_url=("https://maisonblobstorage.blob.core.windows.net/"
-                       "property-images/"
-                       "0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg"),
+            image_url=(
+                "https://maisonblobstorage.blob.core.windows.net/"
+                "property-images/"
+                "0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg"
+            ),
             image_type="interior",
             display_order=2,
         ),

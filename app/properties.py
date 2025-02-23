@@ -318,23 +318,54 @@ def create_property():
     try:
         # Initialize blob storage service
         blob_service = BlobStorageService()
+        warnings = []
+        image_urls = []
 
-        # Handle both JSON and form data
-        if request.is_json:
-            data = request.get_json()
-            files = None
+        # Handle multipart form data with JSON
+        if request.files:
+            try:
+                # Parse JSON data from form field
+                data = json.loads(request.form.get("data", "{}"))
+                files = request.files
+
+                # Handle main image upload
+                if "main_image" in files:
+                    main_image = files["main_image"]
+                    if main_image and allowed_file(main_image.filename):
+                        try:
+                            main_image_url = blob_service.upload_image(
+                                main_image.read(), main_image.content_type
+                            )
+                            image_urls.append(main_image_url)
+                        except Exception as e:
+                            warnings.append(
+                                f"Failed to upload main image: {str(e)}"
+                            )
+
+                # Handle additional images
+                if "additional_images" in files:
+                    for image in files.getlist("additional_images"):
+                        if image and allowed_file(image.filename):
+                            try:
+                                image_url = blob_service.upload_image(
+                                    image.read(), image.content_type
+                                )
+                                image_urls.append(image_url)
+                            except Exception as e:
+                                warnings.append(
+                                    f"Failed to upload additional "
+                                    f"image: {str(e)}"
+                                )
+            except json.JSONDecodeError:
+                return (
+                    jsonify(
+                        {"error": "Invalid JSON data in form field 'data'"}
+                    ),
+                    400,
+                )
         else:
-            data = request.form.to_dict()
-            files = request.files
-            # Parse nested JSON strings from form data
-            if "specs" in data:
-                data["specs"] = json.loads(data["specs"])
-            if "address" in data:
-                data["address"] = json.loads(data["address"])
-            if "features" in data:
-                data["features"] = json.loads(data["features"])
-            if "details" in data:
-                data["details"] = json.loads(data["details"])
+            # Handle pure JSON request
+            data = request.get_json()
 
         # Validate data
         errors = validate_property_data(data)
@@ -342,23 +373,8 @@ def create_property():
             return jsonify({"errors": errors}), 400
 
         property_id = uuid4()
-        warnings = []
-        image_urls = []
 
-        # Handle image uploads if files exist
-        if files and "images" in files:
-            for image in files.getlist("images"):
-                if image and allowed_file(image.filename):
-                    try:
-                        # Upload to blob storage
-                        image_url = blob_service.upload_image(
-                            image.read(), image.content_type
-                        )
-                        image_urls.append(image_url)
-                    except Exception as e:
-                        warnings.append(f"Failed to upload image: {str(e)}")
-
-        # Create property with first image as main image
+        # Create property with main image
         property = Property(
             id=property_id,
             price=int(data["price"]),

@@ -63,15 +63,8 @@ Response:
 ]
 ```
 
-Error Response (User not found):
-```json
-{
-  "error": "User not found"
-}
-```
-
 #### GET /api/properties/<uuid:property_id>
-Get details of a specific property (Public - No auth required)
+Get details of a specific property
 
 Example:
 ```bash
@@ -234,12 +227,41 @@ curl -X POST http://localhost:8000/api/properties \
 Example with images (multipart form data):
 ```bash
 curl -X POST http://localhost:8000/api/properties \
-  -F "price=350000" \
-  -F "user_id=1" \
-  -F "images=@/path/to/house1.jpg" \
-  -F "images=@/path/to/house2.jpg" \
-  -F 'specs={"bedrooms": 3, "bathrooms": 2, "reception_rooms": 1, "square_footage": 1200.0, "property_type": "semi-detached", "epc_rating": "B"}' \
-  -F 'address={"house_number": "123", "street": "Sample Street", "city": "London", "postcode": "SW1 1AA"}'
+  -H "Content-Type: application/json" \
+  -F 'data={
+    "price": 350000,
+    "user_id": 1,
+    "address": {
+      "house_number": "123",
+      "street": "Sample Street",
+      "city": "London",
+      "postcode": "SW1 1AA"
+    },
+    "specs": {
+      "bedrooms": 3,
+      "bathrooms": 2,
+      "reception_rooms": 2,
+      "square_footage": 1200.5,
+      "property_type": "semi-detached",
+      "epc_rating": "B"
+    },
+    "details": {
+      "description": "Beautiful family home",
+      "property_type": "residential",
+      "construction_year": 1990,
+      "parking_spaces": 2,
+      "heating_type": "gas central"
+    },
+    "features": {
+      "has_garden": true,
+      "garden_size": 100.5,
+      "has_garage": true,
+      "parking_spaces": 2
+    }
+  }' \
+  -F "main_image=@/path/to/main-facade.jpg" \
+  -F "additional_images=@/path/to/kitchen.jpg" \
+  -F "additional_images=@/path/to/living-room.jpg"
 ```
 
 Response with images:
@@ -266,7 +288,7 @@ Error Response:
 ```
 
 #### PUT /api/properties/<uuid:property_id>
-Update an existing property (Protected - Requires authentication)
+Update an existing property
 
 Example:
 ```bash
