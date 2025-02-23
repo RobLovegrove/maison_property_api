@@ -8,6 +8,7 @@ from app.models import (
     PropertyMedia,
 )
 from datetime import datetime, UTC
+from unittest.mock import patch
 
 
 @pytest.fixture(scope="session")
@@ -200,3 +201,39 @@ def sample_property(test_user):
             "heating_type": "Gas Central",
         },
     }
+
+
+@pytest.fixture(autouse=True)
+def mock_services():
+    """Mock all external services for tests"""
+    with (
+        patch(
+            "app.blob_storage.BlobStorageService.upload_image"
+        ) as mock_upload,
+        patch(
+            "app.blob_storage.BlobStorageService.delete_image"
+        ) as mock_delete,
+        patch("app.utils.geocode_address") as mock_geocode,
+    ):
+
+        # Set up mock returns
+        mock_upload.return_value = (
+            "https://maisonblobstorage.blob.core.windows.net/"
+            "property-images/test-image.jpg"
+        )
+        mock_geocode.return_value = (51.5074, -0.1278)  # London coordinates
+
+        yield {
+            "upload": mock_upload,
+            "delete": mock_delete,
+            "geocode": mock_geocode,
+        }
+
+
+@pytest.fixture(autouse=True)
+def mock_env_vars(monkeypatch):
+    """Set required environment variables for testing"""
+    monkeypatch.setenv(
+        "AZURE_STORAGE_CONNECTION_STRING", "mock_connection_string"
+    )
+    monkeypatch.setenv("FLASK_ENV", "testing")

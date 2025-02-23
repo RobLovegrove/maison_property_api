@@ -3,6 +3,10 @@ from app import create_app, db
 from uuid import UUID
 from datetime import datetime
 from app.models import User
+import json
+from io import BytesIO
+from unittest.mock import patch
+from werkzeug.datastructures import MultiDict
 
 
 @pytest.fixture
@@ -47,27 +51,40 @@ def test_health_check(client):
 
 def create_test_property(client, test_user, session):
     """Helper function to create a test property"""
-    response = client.post(
-        "/api/properties",
-        json={
-            "price": 350000,
-            "user_id": test_user.id,
-            "specs": {
-                "bedrooms": 3,
-                "bathrooms": 2,
-                "reception_rooms": 1,
-                "square_footage": 1200.0,
-                "property_type": "semi-detached",
-                "epc_rating": "B",
-            },
-            "address": {
-                "house_number": "123",
-                "street": "Test Street",
-                "city": "London",
-                "postcode": "SW1 1AA",
-            },
+    data = {
+        "price": 350000,
+        "user_id": test_user.id,
+        "specs": {
+            "bedrooms": 3,
+            "bathrooms": 2,
+            "reception_rooms": 1,
+            "square_footage": 1200.0,
+            "property_type": "semi-detached",
+            "epc_rating": "B",
         },
+        "address": {
+            "house_number": "123",
+            "street": "Test Street",
+            "city": "London",
+            "postcode": "SW1 1AA",
+        },
+    }
+
+    # Create a test image file
+    test_image = BytesIO(b"fake image data")
+
+    # Create the multipart form data
+    form_data = MultiDict(
+        [
+            ("data", json.dumps(data)),
+            ("main_image", (test_image, "test.jpg", "image/jpeg")),
+        ]
     )
+
+    response = client.post(
+        "/api/properties", data=form_data, content_type="multipart/form-data"
+    )
+
     assert response.status_code == 201
     return response.json["id"]
 
@@ -90,6 +107,9 @@ def test_get_property(client, test_user, session):
     assert data["price"] == 350000
     assert data["address"]["street"] == "Test Street"
     assert data["specs"]["bedrooms"] == 3
+    assert (
+        "main_image_url" in data
+    )  # Just check it exists, don't check exact URL
 
 
 def test_update_property(client, test_user, session):
@@ -115,12 +135,14 @@ def test_update_property(client, test_user, session):
 
 def test_delete_property(client, test_user, session):
     """Test property deletion"""
-    # First create a property
-    property_id = create_test_property(client, test_user, session)
+    # Mock the blob storage service for testing
+    with patch("app.blob_storage.BlobStorageService.delete_image"):
+        # First create a property
+        property_id = create_test_property(client, test_user, session)
 
-    # Delete the property
-    response = client.delete(f"/api/properties/{property_id}")
-    assert response.status_code == 200
+        # Delete the property
+        response = client.delete(f"/api/properties/{property_id}")
+        assert response.status_code == 200
 
 
 def test_get_properties_list(client, test_user, session):
