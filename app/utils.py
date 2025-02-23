@@ -1,45 +1,39 @@
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 from app.exceptions import GeocodeError
-from typing import Tuple, Optional
-import time
 
 
-def geocode_address(
-    house_number: str,
-    street: str,
-    city: str,
-    postcode: str,
-    country: str = "UK",
-    max_retries: int = 3,
-) -> Tuple[Optional[float], Optional[float]]:
+def geocode_address(address):
     """
-    Convert address to latitude and longitude with retries.
-    Returns (latitude, longitude) or raises GeocodeError.
+    Geocode an address using Nominatim.
+
+    Args:
+        address: Address object with street, city, and postcode attributes
+
+    Returns:
+        tuple: (latitude, longitude)
+
+    Raises:
+        GeocodeError: If geocoding fails
     """
-    for attempt in range(max_retries):
-        try:
-            geolocator = Nominatim(user_agent="maison_property_api")
-            address = f"{house_number} {street}, {city}, {postcode}, {country}"
+    try:
+        geolocator = Nominatim(user_agent="maison_property_api")
 
-            location = geolocator.geocode(address)
-            if location:
-                return location.latitude, location.longitude
+        # Format address string (on one line)
+        address_str = (
+            f"{address.house_number} {address.street}, "
+            f"{address.city}, {address.postcode}"
+        )
 
-            # Try without house number if first attempt fails
-            address = f"{street}, {city}, {postcode}, {country}"
-            location = geolocator.geocode(address)
-            if location:
-                return location.latitude, location.longitude
+        # Get location
+        location = geolocator.geocode(address_str)
 
-            raise GeocodeError(f"Could not geocode address: {address}")
+        if location is None:
+            raise GeocodeError(f"Could not geocode address: {address_str}")
 
-        except GeocoderTimedOut:
-            if attempt == max_retries - 1:
-                raise GeocodeError("Geocoding service timed out")
-            time.sleep(1)  # Wait before retry
+        return location.latitude, location.longitude
 
-        except GeocoderServiceError as e:
-            raise GeocodeError(f"Geocoding service error: {str(e)}")
-
-    return None, None
+    except (GeocoderTimedOut, GeocoderServiceError) as e:
+        raise GeocodeError(f"Geocoding service error: {str(e)}")
+    except Exception as e:
+        raise GeocodeError(f"Unexpected error during geocoding: {str(e)}")

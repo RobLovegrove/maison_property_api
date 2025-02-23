@@ -10,6 +10,11 @@ code {
 }
 </style>
 
+# Maison Property API
+
+## Database Configuration
+The API uses PostgreSQL database named 'property_db' hosted on Azure.
+
 # Properties API
 
 A Flask-based REST API for managing property listings.
@@ -20,46 +25,60 @@ A Flask-based REST API for managing property listings.
 
 #### GET /api/properties
 Get a list of all properties
-- Optional query parameters for filtering:
-  - min_price
-  - max_price
-  - property_type
-  - min_bedrooms
-  - postcode
+
+Example:
+```bash
+# Get all properties
+curl http://localhost:8000/api/properties
+
+# Filter properties
+curl http://localhost:8000/api/properties?min_price=350000
+curl http://localhost:8000/api/properties?property_type=semi-detached
+curl http://localhost:8000/api/properties?min_bedrooms=3
+curl http://localhost:8000/api/properties?postcode=SW1
+```
+
+Response:
+```json
+[
+  {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "price": 350000,
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "main_image_url": "https://example.com/image.jpg",
+    "created_at": "2024-02-22T12:00:00Z",
+    "owner_id": 1,
+    "address": {
+      "street": "Sample Street",
+      "city": "London",
+      "postcode": "SW1 1AA"
+    },
+    "specs": {
+      "property_type": "semi-detached",
+      "square_footage": 1200.0
+    }
+  },
+  // ... more properties
+]
+```
+
+Error Response (User not found):
+```json
+{
+  "error": "User not found"
+}
+```
 
 #### GET /api/properties/<uuid:property_id>
-Get details of a specific property
-- Returns property details including owner_id, address, and specifications
-- Returns 404 if property not found
+Get details of a specific property (Public - No auth required)
 
-#### GET /api/properties/user/<int:user_id>
-Get all properties for a specific user
-- Returns array of properties owned by the user
-- Returns 404 if user not found
+Example:
+```bash
+curl http://localhost:8000/api/properties/123e4567-e89b-12d3-a456-426614174000
+```
 
-#### POST /api/properties
-Create a new property listing
-- Required fields in request body:
-  - price (integer)
-  - user_id (integer)
-  - address (object)
-  - specs (object)
-- Optional fields:
-  - features (object)
-  - details (object)
-  - media (array)
-
-#### PUT /api/properties/<uuid:property_id>
-Update an existing property
-- Any fields from the POST schema can be updated
-- Returns 404 if property not found
-
-#### DELETE /api/properties/<uuid:property_id>
-Delete a property
-- Returns 404 if property not found
-
-### Response Format Example
-
+Response:
 ```json
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",
@@ -70,14 +89,179 @@ Delete a property
   "created_at": "2024-02-22T12:00:00Z",
   "owner_id": 1,
   "address": {
+    "house_number": "123",
     "street": "Sample Street",
     "city": "London",
-    "postcode": "SW1 1AA"
+    "postcode": "SW1 1AA",
+    "latitude": 51.5074,
+    "longitude": -0.1278
   },
   "specs": {
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "reception_rooms": 1,
+    "square_footage": 1200.0,
     "property_type": "semi-detached",
-    "square_footage": 1200.0
+    "epc_rating": "B"
+  },
+  "main_image_url": "https://example.com/properties/123/main.jpg",
+  "image_urls": [
+    "https://example.com/properties/123/kitchen.jpg",
+    "https://example.com/properties/123/living-room.jpg",
+    "https://example.com/properties/123/garden.jpg"
+  ]
+}
+```
+
+Error Response:
+```json
+{
+  "error": "Property not found"
+}
+```
+
+#### GET /api/properties/user/{user_id}
+Get all properties for a specific user
+
+Example:
+```bash
+curl http://localhost:8000/api/properties/user/1
+```
+
+Response:
+```json
+[
+  {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "price": 350000,
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "main_image_url": "https://example.com/image.jpg",
+    "created_at": "2024-02-22T12:00:00Z",
+    "owner_id": 1,
+    "address": {
+      "street": "Sample Street",
+      "city": "London",
+      "postcode": "SW1 1AA"
+    },
+    "specs": {
+      "property_type": "semi-detached",
+      "square_footage": 1200.0
+    }
+  },
+  // ... more properties owned by user 1
+]
+```
+
+Error Response (User not found):
+```json
+{
+  "error": "User not found"
+}
+```
+
+#### POST /api/properties
+Create a new property listing
+
+Example:
+```bash
+curl -X POST http://localhost:8000/api/properties \
+  -H "Content-Type: application/json" \
+  -d '{
+    "price": 350000,
+    "user_id": 1,  # Required - ID of the property owner
+    "specs": {
+      "bedrooms": 3,
+      "bathrooms": 2,
+      "reception_rooms": 1,
+      "square_footage": 1200.0,
+      "property_type": "semi-detached",
+      "epc_rating": "B"
+    },
+    "address": {
+      "house_number": "123",
+      "street": "Sample Street",
+      "city": "London",
+      "postcode": "SW1 1AA"
+    }
+  }'
+```
+
+Response:
+```json
+{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "message": "Property created successfully",
+  "warnings": []  // Contains any geocoding warnings if address couldn't be geocoded
+}
+```
+
+Error Response:
+```json
+{
+  "error": "Validation error",
+  "details": {
+    "user_id": ["Field is required"],
+    "price": ["Must be a positive number"]
   }
+}
+```
+
+#### PUT /api/properties/<uuid:property_id>
+Update an existing property (Protected - Requires authentication)
+
+Example:
+```bash
+curl -X PUT http://localhost:8000/api/properties/123e4567-e89b-12d3-a456-426614174000 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${FIREBASE_ID_TOKEN}" \
+  -d '{
+    "price": 375000,
+    "specs": {
+      "bedrooms": 4,
+      "bathrooms": 2,
+      "reception_rooms": 2,
+      "square_footage": 1500.0,
+      "property_type": "semi-detached",
+      "epc_rating": "A"
+    }
+  }'
+```
+
+Response:
+```json
+{
+  "message": "Property updated successfully"
+}
+```
+
+Error Response:
+```json
+{
+  "error": "Property not found"
+}
+```
+
+#### DELETE /api/properties/<uuid:property_id>
+Delete a property (Protected - Requires authentication)
+
+Example:
+```bash
+curl -X DELETE http://localhost:8000/api/properties/123e4567-e89b-12d3-a456-426614174000 \
+  -H "Authorization: Bearer ${FIREBASE_ID_TOKEN}"
+```
+
+Response:
+```json
+{
+  "message": "Property deleted successfully"
+}
+```
+
+Error Response:
+```json
+{
+  "error": "Property not found"
 }
 ```
 
@@ -174,3 +358,30 @@ Error responses include a message:
     "error": "Detailed error message"
 }
 ```
+
+## Running Locally
+
+1. Build the Docker image:
+```bash
+docker build -t maison_property_api .
+```
+
+2. Run the container:
+```bash
+docker run -d \
+  -p 8000:8080 \
+  -e DATABASE_URL="your_database_url" \
+  -e FLASK_APP="wsgi.py" \
+  -e FLASK_ENV="production" \
+  --name maison_api \
+  maison_property_api
+```
+
+3. Test the API:
+```bash
+curl http://localhost:8000/health
+```
+
+## Error Responses
+
+# No error responses currently documented

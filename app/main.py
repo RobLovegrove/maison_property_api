@@ -1,8 +1,10 @@
 from flask import Blueprint, jsonify, render_template_string, current_app
 import os
 import markdown2
+from sqlalchemy import text
+from app import db  # Import db from app package
 
-bp = Blueprint("main", __name__)
+bp = Blueprint("main", __name__)  # No url_prefix
 
 
 @bp.route("/", methods=["GET"])
@@ -88,7 +90,41 @@ def index():
 @bp.route("/health", methods=["GET"])
 def health_check():
     """Health check endpoint."""
-    return jsonify({"status": "healthy"})
+    try:
+        # Test database connection using correct SQL syntax
+        with current_app.app_context():
+            # Log the database URL (remove in production)
+            config = current_app.config
+            current_app.logger.info(
+                f"Database URL: {config['SQLALCHEMY_DATABASE_URI']}"
+            )
+
+            result = db.session.execute(text("SELECT 1")).scalar()
+            db.session.commit()
+
+            return (
+                jsonify(
+                    {
+                        "status": "healthy",
+                        "database": "connected",
+                        "database_test": result == 1,
+                    }
+                ),
+                200,
+            )
+    except Exception as e:
+        current_app.logger.error(f"Health check failed: {str(e)}")
+        current_app.logger.exception("Full traceback:")
+        return (
+            jsonify(
+                {
+                    "status": "unhealthy",
+                    "database": "disconnected",
+                    "error": str(e),
+                }
+            ),
+            500,
+        )
 
 
 @bp.route("/docs", methods=["GET"])
@@ -105,3 +141,41 @@ def api_docs():
                 }
             )
     return jsonify({"endpoints": routes, "base_url": "/api/properties"})
+
+
+@bp.route("/dbtest")
+def test_db():
+    """Test database connection and return current data."""
+    try:
+        # Get database URL (masked password)
+        db_url = current_app.config["SQLALCHEMY_DATABASE_URI"]
+        masked_url = db_url.replace(db_url.split("@")[0].split(":")[2], "****")
+
+        # Test queries
+        property_count = db.session.execute(
+            text("SELECT COUNT(*) FROM properties")
+        ).scalar()
+        property_ids = db.session.execute(
+            text(
+                "SELECT id, created_at "
+                "FROM properties "
+                "ORDER BY created_at DESC "
+                "LIMIT 5"
+            )
+        ).fetchall()
+
+        return jsonify(
+            {
+                "status": "connected",
+                "database_url": masked_url,
+                "property_count": property_count,
+                "recent_properties": [
+                    {"id": str(p.id), "created_at": p.created_at.isoformat()}
+                    for p in property_ids
+                ],
+            }
+        )
+    except Exception as e:
+        current_app.logger.error(f"Database test error: {str(e)}")
+        current_app.logger.exception("Full traceback:")
+        return jsonify({"status": "error", "error": str(e)}), 500

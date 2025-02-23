@@ -5,6 +5,7 @@ from app.models import (
     Address,
     PropertySpecs,
     User,
+    PropertyMedia,
 )
 from datetime import datetime, UTC
 
@@ -13,21 +14,33 @@ from datetime import datetime, UTC
 def app():
     """Create application for the tests."""
     app = create_app("testing")
-    app.config.update(
-        {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 300}
-    )
-    return app
+
+    # Set up the test database
+    with app.app_context():
+        db.create_all()
+
+        # Create test user
+        user = User(email="test@example.com", name="Test User")
+        db.session.add(user)
+        db.session.commit()
+
+    yield app
+
+    # Clean up
+    with app.app_context():
+        db.session.remove()
+        db.drop_all()
 
 
 @pytest.fixture(scope="session")
 def client(app):
-    """Create a test client."""
+    """A test client for the app."""
     return app.test_client()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def runner(app):
-    """Test runner for CLI commands."""
+    """A test runner for the app's Click commands."""
     return app.test_cli_runner()
 
 
@@ -60,12 +73,36 @@ def init_database(app, session, test_user):
         bedrooms=3,
         bathrooms=2.0,
         user_id=test_user.id,
+        main_image_url="https://example.com/main.jpg",
         created_at=datetime.now(UTC),
         last_updated=datetime.now(UTC),
     )
 
     session.add(property)
     session.flush()  # Get ID before creating related objects
+
+    # Create media
+    media = [
+        PropertyMedia(
+            property=property,
+            image_url="https://example.com/main.jpg",
+            image_type="main",
+            display_order=1,
+        ),
+        PropertyMedia(
+            property=property,
+            image_url="https://example.com/kitchen.jpg",
+            image_type="interior",
+            display_order=2,
+        ),
+        PropertyMedia(
+            property=property,
+            image_url="https://example.com/floorplan.pdf",
+            image_type="floorplan",
+            display_order=3,
+        ),
+    ]
+    session.add_all(media)
 
     # Create address
     address = Address(
@@ -90,7 +127,7 @@ def init_database(app, session, test_user):
     session.add(specs)
 
     session.commit()
-    return session.get(Property, property.id)  # Get fresh instance
+    return property
 
 
 @pytest.fixture(scope="function")

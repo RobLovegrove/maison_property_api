@@ -76,7 +76,6 @@ class PropertyCreateSchema(Schema):
 
     price = fields.Int(required=True, validate=validate.Range(min=0))
     main_image_url = fields.URL(allow_none=True)
-    user_id = fields.Int(required=True)
     address = fields.Nested(AddressSchema, required=True)
     specs = fields.Nested(PropertySpecsSchema, required=True)
     features = fields.Nested(PropertyFeaturesSchema, required=False)
@@ -105,16 +104,35 @@ class PropertyListSchema(Schema):
     class Meta:
         unknown = EXCLUDE
 
-    id = fields.UUID(required=True)
+    def get_id(self, obj):
+        """Get ID as string"""
+        if not obj:
+            return None
+        return str(obj.id) if hasattr(obj, "id") else str(obj)
+
+    id = fields.Method("get_id", required=True)
     price = fields.Int(required=True)
     bedrooms = fields.Int()
     bathrooms = fields.Int()
     main_image_url = fields.URL(allow_none=True)
     created_at = fields.DateTime(format="iso")
-    owner_id = fields.Int(
-        required=True
-    )  # Just the ID, not the full user object
-    address = fields.Nested(AddressSchema(only=("street", "city", "postcode")))
-    specs = fields.Nested(
-        PropertySpecsSchema(only=("property_type", "square_footage"))
+    owner_id = fields.Int(required=True)
+    address = fields.Nested(
+        AddressSchema(only=("street", "city", "postcode")), dump_only=True
     )
+    specs = fields.Nested(
+        PropertySpecsSchema(only=("property_type", "square_footage")),
+        dump_only=True,
+    )
+
+
+class PropertySchema(Schema):
+    id = fields.UUID(dump_only=True)
+    price = fields.Integer(required=True)
+    bedrooms = fields.Integer()
+    bathrooms = fields.Float()
+    main_image_url = fields.String()
+    image_urls = fields.List(fields.String())
+    floorplan_url = fields.String()
+    created_at = fields.DateTime(dump_only=True)
+    # ... rest of schema
