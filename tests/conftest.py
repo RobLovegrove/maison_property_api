@@ -9,6 +9,7 @@ from app.models import (
 )
 from datetime import datetime, UTC
 from unittest.mock import patch
+from app.blob_storage import MockBlobStorageService
 
 
 @pytest.fixture(scope="function")
@@ -199,10 +200,13 @@ def sample_property(test_user):
 @pytest.fixture(autouse=True)
 def mock_services(monkeypatch):
     """Mock all external services for tests"""
-    # Ensure we're using the mock service
+    # Create an instance of MockBlobStorageService
+    mock_service = MockBlobStorageService()
+
+    # Replace the BlobStorageService class with our mock instance
     monkeypatch.setattr(
-        "app.blob_storage.BlobStorageService",
-        "app.blob_storage.MockBlobStorageService",
+        "app.properties.BlobStorageService",  # Change this line
+        lambda: mock_service,
     )
 
     with patch("app.utils.geocode_address") as mock_geocode:
