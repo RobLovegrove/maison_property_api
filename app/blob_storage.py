@@ -27,7 +27,9 @@ try:
 
     class BlobStorageService:
         def __init__(self):
-            connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+            connection_string = os.environ.get(
+                "AZURE_STORAGE_CONNECTION_STRING"
+            )
             if not connection_string:
                 raise ValueError("Azure Storage connection string not set")
             self.blob_service_client = (
