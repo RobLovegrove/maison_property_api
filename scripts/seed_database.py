@@ -22,13 +22,13 @@ USERS = [
 
 # Update sample image data with more realistic URLs
 SAMPLE_IMAGES = [
-    "https://maison-property-images.azurewebsites.net/properties/modern-house-1.jpg",
-    "https://maison-property-images.azurewebsites.net/properties/luxury-apartment-1.jpg",
-    "https://maison-property-images.azurewebsites.net/properties/garden-view-1.jpg",
-    "https://maison-property-images.azurewebsites.net/properties/kitchen-1.jpg",
-    "https://maison-property-images.azurewebsites.net/properties/living-room-1.jpg",
-    "https://maison-property-images.azurewebsites.net/properties/bedroom-master-1.jpg",
-    "https://maison-property-images.azurewebsites.net/properties/bathroom-1.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
 ]
 
 SAMPLE_FLOORPLANS = [

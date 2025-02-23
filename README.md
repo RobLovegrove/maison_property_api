@@ -177,17 +177,16 @@ Required fields:
 - price (integer)
 - user_id (integer)
 - address (object with house_number, street, city, postcode)
-- specs (object with bedrooms, bathrooms, reception_rooms, square_footage, 
-  property_type, epc_rating)
+- specs (object with bedrooms, bathrooms, reception_rooms, square_footage, property_type, epc_rating)
 
 Optional fields:
 - main_image_url (string)
-- details (object with description, property_type, construction_year, 
-  parking_spaces, heating_type)
+- images (array of image files, max 5MB each, formats: JPG, JPEG, PNG, GIF)
+- details (object with description, property_type, construction_year, parking_spaces, heating_type)
 - features (object with has_garden, garden_size, has_garage, parking_spaces)
 - media (array of objects with image_url, image_type, display_order)
 
-Example:
+Example with JSON:
 ```bash
 curl -X POST http://localhost:8000/api/properties \
   -H "Content-Type: application/json" \
@@ -232,12 +231,27 @@ curl -X POST http://localhost:8000/api/properties \
   }'
 ```
 
-Response:
+Example with images (multipart form data):
+```bash
+curl -X POST http://localhost:8000/api/properties \
+  -F "price=350000" \
+  -F "user_id=1" \
+  -F "images=@/path/to/house1.jpg" \
+  -F "images=@/path/to/house2.jpg" \
+  -F 'specs={"bedrooms": 3, "bathrooms": 2, "reception_rooms": 1, "square_footage": 1200.0, "property_type": "semi-detached", "epc_rating": "B"}' \
+  -F 'address={"house_number": "123", "street": "Sample Street", "city": "London", "postcode": "SW1 1AA"}'
+```
+
+Response with images:
 ```json
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",
   "message": "Property created successfully",
-  "warnings": []
+  "warnings": [],
+  "image_urls": [
+    "https://maisonblobstorage.blob.core.windows.net/property-images/abc123.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/property-images/def456.jpg"
+  ]
 }
 ```
 
@@ -345,6 +359,12 @@ Error Response:
    - Comprehensive error handling for all endpoints
    - Detailed error messages and appropriate HTTP status codes
    - Warning messages for non-fatal issues
+
+6. **Azure Blob Storage Integration**
+   - Property images now stored in Azure Blob Storage
+   - Automatic image cleanup when properties are deleted
+   - Support for multiple image uploads
+   - Image validation (size, format, dimensions)
 
 ## Setup
 

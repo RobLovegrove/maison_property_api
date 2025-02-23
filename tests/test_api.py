@@ -46,27 +46,28 @@ def test_health_check(client):
 
 
 def create_test_property(client, test_user, session):
-    """Helper function to create a test property."""
-    property_data = {
-        "price": 350000,
-        "user_id": test_user.id,
-        "specs": {
-            "bedrooms": 3,
-            "bathrooms": 2,
-            "reception_rooms": 1,
-            "square_footage": 1200.0,
-            "property_type": "semi-detached",
-            "epc_rating": "B",
+    """Helper function to create a test property"""
+    response = client.post(
+        "/api/properties",
+        json={
+            "price": 350000,
+            "user_id": test_user.id,
+            "specs": {
+                "bedrooms": 3,
+                "bathrooms": 2,
+                "reception_rooms": 1,
+                "square_footage": 1200.0,
+                "property_type": "semi-detached",
+                "epc_rating": "B",
+            },
+            "address": {
+                "house_number": "123",
+                "street": "Test Street",
+                "city": "London",
+                "postcode": "SW1 1AA",
+            },
         },
-        "address": {
-            "house_number": "123",
-            "street": "Test Street",
-            "city": "London",
-            "postcode": "SW1 1AA",
-        },
-    }
-
-    response = client.post("/api/properties", json=property_data)
+    )
     assert response.status_code == 201
     return response.json["id"]
 

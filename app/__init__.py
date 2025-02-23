@@ -3,6 +3,7 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_caching import Cache
+from flask_cors import CORS
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -30,6 +31,10 @@ def create_app(config_name="development"):
         "pool_pre_ping": True,  # Enable connection health checks
         "pool_recycle": 300,  # Recycle connections every 5 minutes
     }
+
+    # Initialize CORS only if CORS_RESOURCES is configured
+    if app.config.get("CORS_RESOURCES"):
+        CORS(app, resources=app.config["CORS_RESOURCES"])
 
     # Register blueprints
     from app.properties import bp as properties_bp

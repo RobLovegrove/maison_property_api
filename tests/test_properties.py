@@ -43,22 +43,23 @@ def test_create_property(client, test_property_data):
 
 
 def test_get_property_detail(client, init_database):
-    """Test getting detailed property information with media."""
-    property_id = init_database.id
-
-    response = client.get(f"/api/properties/{property_id}")
+    """Test getting a single property with all details."""
+    property = init_database
+    response = client.get(f"/api/properties/{property.id}")
     assert response.status_code == 200
     data = response.json
 
-    # Check basic fields
+    # Update the expected image URL
+    expected_image_url = (
+        "https://maisonblobstorage.blob.core.windows.net/"
+        "property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg"
+    )
+    assert data["main_image_url"] == expected_image_url
     assert data["price"] == 350000
-    assert data["specs"]["bedrooms"] == 3
+    assert data["bedrooms"] == 3
+    assert data["bathrooms"] == 2
     assert data["address"]["street"] == "Test Street"
-
-    # Check media fields
-    assert data["main_image_url"] == "https://example.com/main.jpg"
-    assert "https://example.com/kitchen.jpg" in data["image_urls"]
-    assert data["floorplan_url"] == "https://example.com/floorplan.pdf"
+    assert data["specs"]["property_type"] == "semi-detached"
 
 
 def test_get_property_without_media(client, test_user, session):

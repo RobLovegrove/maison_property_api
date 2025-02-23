@@ -1,5 +1,5 @@
 from app import create_app, db
-from app.models import User, Property, Address, PropertySpecs
+from app.models import User, Property, Address, PropertySpecs, PropertyMedia
 from datetime import datetime, UTC
 from uuid import uuid4
 import random
@@ -31,6 +31,9 @@ def reset_database():
         db.session.add(user)
         db.session.commit()
 
+        # Define the standard image URL
+        AZURE_IMAGE_URL = "https://maisonblobstorage.blob.core.windows.net/property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg"
+
         # Create sample properties with explicit UUIDs
         for i in range(3):
             property_id = uuid4()
@@ -42,10 +45,19 @@ def reset_database():
                 bedrooms=3,
                 bathrooms=2,
                 user_id=user.id,
-                main_image_url=None,
+                main_image_url=AZURE_IMAGE_URL,  # Set the main image URL
                 created_at=datetime.now(UTC)
             )
             db.session.add(property)
+
+            # Create media entry for the main image
+            media = PropertyMedia(
+                property_id=property_id,
+                image_url=AZURE_IMAGE_URL,
+                image_type="main",
+                display_order=0
+            )
+            db.session.add(media)
 
             # Create address
             address = Address(

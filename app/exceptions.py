@@ -20,3 +20,9 @@ class ValidationError(PropertyAPIError):
     """Raised for data validation errors"""
 
     pass
+
+
+class BlobStorageError(PropertyAPIError):
+    """Raised when blob storage operations fail"""
+
+    pass

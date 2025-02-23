@@ -4,6 +4,7 @@ from app.models import (
     Property,
     Address,
     PropertySpecs,
+    PropertyMedia,
 )
 from datetime import datetime, UTC
 from sqlalchemy.sql import select
@@ -12,6 +13,8 @@ from flask_caching import Cache
 from app.utils import geocode_address
 from app.exceptions import GeocodeError
 from uuid import uuid4
+from app.blob_storage import BlobStorageService
+import json
 
 bp = Blueprint("properties", __name__)
 
@@ -313,25 +316,69 @@ def get_property(property_id):
 def create_property():
     """Create a new property."""
     try:
-        data = request.get_json()
+        # Initialize blob storage service
+        blob_service = BlobStorageService()
+
+        # Handle both JSON and form data
+        if request.is_json:
+            data = request.get_json()
+            files = None
+        else:
+            data = request.form.to_dict()
+            files = request.files
+            # Parse nested JSON strings from form data
+            if "specs" in data:
+                data["specs"] = json.loads(data["specs"])
+            if "address" in data:
+                data["address"] = json.loads(data["address"])
+            if "features" in data:
+                data["features"] = json.loads(data["features"])
+            if "details" in data:
+                data["details"] = json.loads(data["details"])
+
+        # Validate data
         errors = validate_property_data(data)
         if errors:
             return jsonify({"errors": errors}), 400
 
         property_id = uuid4()
         warnings = []
+        image_urls = []
 
-        # Create main property
+        # Handle image uploads if files exist
+        if files and "images" in files:
+            for image in files.getlist("images"):
+                if image and allowed_file(image.filename):
+                    try:
+                        # Upload to blob storage
+                        image_url = blob_service.upload_image(
+                            image.read(), image.content_type
+                        )
+                        image_urls.append(image_url)
+                    except Exception as e:
+                        warnings.append(f"Failed to upload image: {str(e)}")
+
+        # Create property with first image as main image
         property = Property(
             id=property_id,
-            price=data["price"],
-            bedrooms=data["specs"]["bedrooms"],
-            bathrooms=data["specs"]["bathrooms"],
-            main_image_url=data.get("main_image_url"),
-            user_id=data["user_id"],
+            price=int(data["price"]),
+            bedrooms=int(data["specs"]["bedrooms"]),
+            bathrooms=float(data["specs"]["bathrooms"]),
+            main_image_url=image_urls[0] if image_urls else None,
+            user_id=int(data["user_id"]),
             created_at=datetime.now(UTC),
         )
         db.session.add(property)
+
+        # Create media entries for all images
+        for idx, image_url in enumerate(image_urls):
+            media = PropertyMedia(
+                property_id=property_id,
+                image_url=image_url,
+                image_type="main" if idx == 0 else "interior",
+                display_order=idx,
+            )
+            db.session.add(media)
 
         # Create address
         address = Address(
@@ -390,19 +437,6 @@ def create_property():
             )
             db.session.add(features)
 
-        # Create media if provided
-        if "media" in data:
-            from app.models import PropertyMedia
-
-            for media_item in data["media"]:
-                media = PropertyMedia(
-                    property_id=property_id,
-                    image_url=media_item["image_url"],
-                    image_type=media_item.get("image_type", "interior"),
-                    display_order=media_item.get("display_order"),
-                )
-                db.session.add(media)
-
         db.session.commit()
         return (
             jsonify(
@@ -410,6 +444,7 @@ def create_property():
                     "id": str(property_id),
                     "message": "Property created successfully",
                     "warnings": warnings,
+                    "image_urls": image_urls,
                 }
             ),
             201,
@@ -419,6 +454,15 @@ def create_property():
         db.session.rollback()
         current_app.logger.error(f"Error creating property: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+
+def allowed_file(filename):
+    """Check if file type is allowed"""
+    ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
+    return (
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    )
 
 
 @bp.route("/<uuid:property_id>", methods=["PUT"])
@@ -460,6 +504,14 @@ def delete_property(property_id):
         property_item = db.session.get(Property, property_id)
         if property_item is None:
             return jsonify({"error": "Property not found"}), 404
+
+        # Delete images from blob storage
+        blob_service = BlobStorageService()
+        for media in property_item.media:
+            try:
+                blob_service.delete_image(media.image_url)
+            except Exception as e:
+                current_app.logger.error(f"Failed to delete image: {str(e)}")
 
         db.session.delete(property_item)
         db.session.commit()
@@ -517,4 +569,27 @@ def get_user_properties(user_id):
         )
 
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/test-upload", methods=["POST"])
+def test_upload():
+    """Test endpoint for image upload"""
+    try:
+        if "image" not in request.files:
+            return jsonify({"error": "No image file provided"}), 400
+
+        file = request.files["image"]
+        if file.filename == "":
+            return jsonify({"error": "No selected file"}), 400
+
+        if file and allowed_file(file.filename):
+            blob_service = BlobStorageService()
+            image_url = blob_service.upload_image(
+                file.read(), file.content_type
+            )
+            return jsonify({"message": "Upload successful", "url": image_url})
+
+    except Exception as e:
+        current_app.logger.error(f"Upload test error: {str(e)}")
         return jsonify({"error": str(e)}), 500

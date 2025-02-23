@@ -13,6 +13,26 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_MIGRATE_REPO = os.path.join(basedir, "..", "migrations")
 
+    # Add CORS configuration
+    CORS_HEADERS = "Content-Type"
+    CORS_RESOURCES = {
+        r"/api/*": {
+            "origins": [
+                "http://localhost:3000",
+                "http://localhost:5137",
+                "http://www.maisonai.co.uk",
+                "https://www.maisonai.co.uk",
+                "http://maisonbot-api.xyz",
+                "https://maisonbot-api.xyz",
+                "http://4.207.106.67",
+                "http://128.251.124.181",
+                "https://maison-frontend.azurewebsites.net",
+            ],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+        }
+    }
+
 
 class TestConfig(Config):
     """Test configuration."""
@@ -44,31 +64,29 @@ config = {
 }
 
 SEED_PROPERTY_IMAGES = [
-    "https://webberstudio.com/wp-content/uploads/2023/02/"
-    "Stunning-House-Design.jpg",
-    "https://static.schumacherhomes.com/umbraco/media/wvflutbh/"
-    "image4.jpg?format=webp",
-    "https://media.architecturaldigest.com/photos/61b0ce48dccdb75fa170f8f7/"
-    "16:9/w_2560%2Cc_limit/PurpleCherry_Williams_0012.jpg",
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8S9I5BU7fzueWmpn"
-    "ELDz5f7WZ70_pcDfMIw&s",
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRVAsvbLdqmTr0y0Kh"
-    "DlNNBBJ0ZQldPgFs9sw&s",
+    "https://maisonblobstorage.blob.core.windows.net/"
+    "property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/"
+    "property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/"
+    "property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/"
+    "property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/"
+    "property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
 ]
 
 SEED_ADDITIONAL_IMAGES = [
-    "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?fm=jpg&q=60"
-    "&w=3000&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8aG9tZSUyMGludGVy"
-    "aW9yfGVufDB8fDB8fHww",
-    "https://images.livspace-cdn.com/w:3840/plain/https://d3gq2merok8n5r."
-    "cloudfront.net/abhinav/design-ideas-thumbnails-1628773921-7vSz1/jas-"
-    "thumbnails-1662014793-zEzY3/mobile-1662014804-Sebbn/mbr-m-1662025089"
-    "-SomZl.png",
-    "https://s3.amazonaws.com/buildercloud/1a5e7ed6587ee905ab32d94ed23432fb."
-    "jpeg",
-    "https://st.hzcdn.com/simgs/f801330c079635d3_14-7430/home-design.jpg",
-    "https://www.thesmallgardener.co.uk/wp-content/uploads/2023/03/"
-    "Home-page.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/"
+    "property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/"
+    "property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/"
+    "property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/"
+    "property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/"
+    "property-images/0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg",
 ]
 
 SEED_FLOORPLAN_URL = (

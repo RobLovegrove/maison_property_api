@@ -18,6 +18,8 @@ ENV/
 # Environment Variables
 .env
 .env.local
+.env.*
+!.env.example
 
 # IDE settings
 .vscode/
@@ -33,3 +35,4 @@ TODO.md
 scripts/deploy_to_azure.sh
 scripts/reset_azure_db.sh
 scripts/azure_config.sh
+scripts/run_api.sh
