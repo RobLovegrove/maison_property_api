@@ -144,7 +144,7 @@ class Address(db.Model):
     property = relationship(
         "Property",
         back_populates="address",
-        primaryjoin="Address.property_id == Property.id"
+        primaryjoin="Address.property_id == Property.id",
     )
 
 

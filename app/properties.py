@@ -28,14 +28,19 @@ def validate_property_data(data):
     """Validate property data from request."""
     errors = []
 
-    # Validate main property data
-    if "price" not in data or not isinstance(data["price"], int):
-        errors.append("Price must be a number")
+    # Validate required fields
+    required_fields = ["price", "user_id", "address", "specs"]
+    for field in required_fields:
+        if field not in data:
+            errors.append(f"{field} is required")
+            return errors
+
+    # Validate price
+    if not isinstance(data["price"], int) or data["price"] < 0:
+        errors.append("Price must be a positive number")
 
     # Validate address
-    if "address" not in data:
-        errors.append("Address is required")
-    else:
+    if "address" in data:
         addr = data["address"]
         required_addr_fields = ["house_number", "street", "city", "postcode"]
         for field in required_addr_fields:
@@ -43,9 +48,7 @@ def validate_property_data(data):
                 errors.append(f"Address {field} is required")
 
     # Validate specs
-    if "specs" not in data:
-        errors.append("Property specifications are required")
-    else:
+    if "specs" in data:
         specs = data["specs"]
         required_specs = {
             "bedrooms": int,
@@ -76,6 +79,15 @@ def validate_property_data(data):
                 errors.append(f"Detail {field} is required")
             elif not isinstance(details[field], field_type):
                 errors.append(f"{field} must be a {field_type.__name__}")
+
+    # Validate media if provided
+    if "media" in data:
+        if not isinstance(data["media"], list):
+            errors.append("Media must be a list")
+        else:
+            for idx, media_item in enumerate(data["media"]):
+                if "image_url" not in media_item:
+                    errors.append(f"Media item {idx} missing image_url")
 
     return errors
 
@@ -154,6 +166,8 @@ def get_property(property_id):
                 joinedload(Property.address),
                 joinedload(Property.specs),
                 joinedload(Property.media),
+                joinedload(Property.details),
+                joinedload(Property.features),
             ],
         )
 
@@ -240,6 +254,51 @@ def get_property(property_id):
                         if result.specs
                         else None
                     ),
+                    "details": {
+                        "description": (
+                            result.details.description
+                            if result.details
+                            else None
+                        ),
+                        "construction_year": (
+                            result.details.construction_year
+                            if result.details
+                            else None
+                        ),
+                        "heating_type": (
+                            result.details.heating_type
+                            if result.details
+                            else None
+                        ),
+                        "parking_spaces": (
+                            result.details.parking_spaces
+                            if result.details
+                            else None
+                        ),
+                    },
+                    "features": {
+                        "has_garden": (
+                            result.features.has_garden
+                            if result.features
+                            else False
+                        ),
+                        "garden_size": (
+                            result.features.garden_size
+                            if result.features
+                            else None
+                        ),
+                        "has_garage": (
+                            result.features.has_garage
+                            if result.features
+                            else False
+                        ),
+                        "parking_spaces": (
+                            result.features.parking_spaces
+                            if result.features
+                            else 0
+                        ),
+                    },
+                    "last_updated": result.last_updated.isoformat(),
                 }
             ),
             200,
@@ -255,18 +314,26 @@ def create_property():
     """Create a new property."""
     try:
         data = request.get_json()
-        property_id = uuid4()
+        errors = validate_property_data(data)
+        if errors:
+            return jsonify({"errors": errors}), 400
 
+        property_id = uuid4()
+        warnings = []
+
+        # Create main property
         property = Property(
             id=property_id,
             price=data["price"],
             bedrooms=data["specs"]["bedrooms"],
             bathrooms=data["specs"]["bathrooms"],
+            main_image_url=data.get("main_image_url"),
             user_id=data["user_id"],
             created_at=datetime.now(UTC),
         )
         db.session.add(property)
 
+        # Create address
         address = Address(
             property_id=property_id,
             house_number=data["address"]["house_number"],
@@ -275,7 +342,6 @@ def create_property():
             postcode=data["address"]["postcode"],
         )
 
-        warnings = []
         try:
             lat, lon = geocode_address(address)
             address.latitude = lat
@@ -285,8 +351,57 @@ def create_property():
 
         db.session.add(address)
 
-        specs = PropertySpecs(property_id=property_id, **data["specs"])
+        # Create specs
+        specs = PropertySpecs(
+            property_id=property_id,
+            bedrooms=data["specs"]["bedrooms"],
+            bathrooms=data["specs"]["bathrooms"],
+            reception_rooms=data["specs"]["reception_rooms"],
+            square_footage=data["specs"]["square_footage"],
+            property_type=data["specs"]["property_type"],
+            epc_rating=data["specs"]["epc_rating"],
+        )
         db.session.add(specs)
+
+        # Create details if provided
+        if "details" in data:
+            from app.models import PropertyDetail
+
+            details = PropertyDetail(
+                property_id=property_id,
+                description=data["details"]["description"],
+                property_type=data["details"]["property_type"],
+                construction_year=data["details"]["construction_year"],
+                parking_spaces=data["details"]["parking_spaces"],
+                heating_type=data["details"]["heating_type"],
+            )
+            db.session.add(details)
+
+        # Create features if provided
+        if "features" in data:
+            from app.models import PropertyFeatures
+
+            features = PropertyFeatures(
+                property_id=property_id,
+                has_garden=data["features"].get("has_garden", False),
+                garden_size=data["features"].get("garden_size"),
+                has_garage=data["features"].get("has_garage", False),
+                parking_spaces=data["features"].get("parking_spaces", 0),
+            )
+            db.session.add(features)
+
+        # Create media if provided
+        if "media" in data:
+            from app.models import PropertyMedia
+
+            for media_item in data["media"]:
+                media = PropertyMedia(
+                    property_id=property_id,
+                    image_url=media_item["image_url"],
+                    image_type=media_item.get("image_type", "interior"),
+                    display_order=media_item.get("display_order"),
+                )
+                db.session.add(media)
 
         db.session.commit()
         return (
@@ -302,6 +417,7 @@ def create_property():
 
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f"Error creating property: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 

@@ -85,8 +85,11 @@ Response:
   "price": 350000,
   "bedrooms": 3,
   "bathrooms": 2,
-  "main_image_url": "https://example.com/image.jpg",
+  "main_image_url": "https://example.com/main.jpg",
+  "image_urls": ["https://example.com/img1.jpg", "https://example.com/img2.jpg"],
+  "floorplan_url": "https://example.com/floorplan.jpg",
   "created_at": "2024-02-22T12:00:00Z",
+  "last_updated": "2024-02-22T12:00:00Z",
   "owner_id": 1,
   "address": {
     "house_number": "123",
@@ -99,17 +102,24 @@ Response:
   "specs": {
     "bedrooms": 3,
     "bathrooms": 2,
-    "reception_rooms": 1,
-    "square_footage": 1200.0,
+    "reception_rooms": 2,
+    "square_footage": 1200.5,
     "property_type": "semi-detached",
     "epc_rating": "B"
   },
-  "main_image_url": "https://example.com/properties/123/main.jpg",
-  "image_urls": [
-    "https://example.com/properties/123/kitchen.jpg",
-    "https://example.com/properties/123/living-room.jpg",
-    "https://example.com/properties/123/garden.jpg"
-  ]
+  "details": {
+    "description": "Beautiful family home",
+    "property_type": "residential",
+    "construction_year": 1990,
+    "parking_spaces": 2,
+    "heating_type": "gas central"
+  },
+  "features": {
+    "has_garden": true,
+    "garden_size": 100.5,
+    "has_garage": true,
+    "parking_spaces": 2
+  }
 }
 ```
 
@@ -163,27 +173,62 @@ Error Response (User not found):
 #### POST /api/properties
 Create a new property listing
 
+Required fields:
+- price (integer)
+- user_id (integer)
+- address (object with house_number, street, city, postcode)
+- specs (object with bedrooms, bathrooms, reception_rooms, square_footage, 
+  property_type, epc_rating)
+
+Optional fields:
+- main_image_url (string)
+- details (object with description, property_type, construction_year, 
+  parking_spaces, heating_type)
+- features (object with has_garden, garden_size, has_garage, parking_spaces)
+- media (array of objects with image_url, image_type, display_order)
+
 Example:
 ```bash
 curl -X POST http://localhost:8000/api/properties \
   -H "Content-Type: application/json" \
   -d '{
     "price": 350000,
-    "user_id": 1,  # Required - ID of the property owner
-    "specs": {
-      "bedrooms": 3,
-      "bathrooms": 2,
-      "reception_rooms": 1,
-      "square_footage": 1200.0,
-      "property_type": "semi-detached",
-      "epc_rating": "B"
-    },
+    "user_id": 1,
+    "main_image_url": "https://example.com/main.jpg",
     "address": {
       "house_number": "123",
       "street": "Sample Street",
       "city": "London",
       "postcode": "SW1 1AA"
-    }
+    },
+    "specs": {
+      "bedrooms": 3,
+      "bathrooms": 2,
+      "reception_rooms": 2,
+      "square_footage": 1200.5,
+      "property_type": "semi-detached",
+      "epc_rating": "B"
+    },
+    "details": {
+      "description": "Beautiful family home",
+      "property_type": "residential",
+      "construction_year": 1990,
+      "parking_spaces": 2,
+      "heating_type": "gas central"
+    },
+    "features": {
+      "has_garden": true,
+      "garden_size": 100.5,
+      "has_garage": true,
+      "parking_spaces": 2
+    },
+    "media": [
+      {
+        "image_url": "https://example.com/img1.jpg",
+        "image_type": "interior",
+        "display_order": 1
+      }
+    ]
   }'
 ```
 
@@ -192,18 +237,17 @@ Response:
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",
   "message": "Property created successfully",
-  "warnings": []  // Contains any geocoding warnings if address couldn't be geocoded
+  "warnings": []
 }
 ```
 
 Error Response:
 ```json
 {
-  "error": "Validation error",
-  "details": {
-    "user_id": ["Field is required"],
-    "price": ["Must be a positive number"]
-  }
+  "errors": [
+    "Price must be a positive number",
+    "Address street is required"
+  ]
 }
 ```
 
