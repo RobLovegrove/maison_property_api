@@ -52,4 +52,4 @@ jobs:
           TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
           PYTHONPATH: ${{ github.workspace }}
         run: |
-          pytest -v --tb=short --no-header --no-summary -p no:warnings
+          pytest -v --no-header --no-summary -p no:warnings
