@@ -17,12 +17,11 @@ jobs:
       - name: Run flake8
         run: flake8 tests/ app/
 
-  unit-tests:
+  test:
     runs-on: ubuntu-latest
-    needs: python-formatting
     services:
       postgres:
-        image: postgres:latest
+        image: postgres:14
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -47,9 +46,16 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-flask
           pip install -e .
+      - name: Verify PostgreSQL connection
+        run: |
+          sudo apt-get install -y postgresql-client
+          pg_isready -h localhost -p 5432
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c '\dt'
       - name: Run tests
         env:
           TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
           PYTHONPATH: ${{ github.workspace }}
+          FLASK_ENV: testing
+          AZURE_STORAGE_CONNECTION_STRING: mock_connection_string
         run: |
           pytest -v --no-header --no-summary -p no:warnings
