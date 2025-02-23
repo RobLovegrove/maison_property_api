@@ -5,7 +5,6 @@ from datetime import datetime
 from app.models import User
 import json
 from io import BytesIO
-from unittest.mock import patch
 from werkzeug.datastructures import MultiDict
 
 
@@ -135,14 +134,16 @@ def test_update_property(client, test_user, session):
 
 def test_delete_property(client, test_user, session):
     """Test property deletion"""
-    # Mock the blob storage service for testing
-    with patch("app.blob_storage.BlobStorageService.delete_image"):
-        # First create a property
-        property_id = create_test_property(client, test_user, session)
+    # First create a property
+    property_id = create_test_property(client, test_user, session)
 
-        # Delete the property
-        response = client.delete(f"/api/properties/{property_id}")
-        assert response.status_code == 200
+    # Delete the property
+    response = client.delete(f"/api/properties/{property_id}")
+    assert response.status_code == 200
+
+    # Verify deletion
+    get_response = client.get(f"/api/properties/{property_id}")
+    assert get_response.status_code == 404
 
 
 def test_get_properties_list(client, test_user, session):

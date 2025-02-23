@@ -38,9 +38,10 @@ class TestConfig(Config):
     """Test configuration."""
 
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "TEST_DATABASE_URL", "postgresql://roblovegrove@localhost:5432/test_db"
+    SQLALCHEMY_DATABASE_URI = (
+        "sqlite:///:memory:"  # Use in-memory SQLite for tests
     )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 
 class DevelopmentConfig(Config):

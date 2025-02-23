@@ -7,9 +7,14 @@ class MockBlobStorageService:
     """Mock service for testing"""
 
     def upload_image(self, image_data, content_type):
-        return "https://mock-storage/test-image.jpg"
+        """Mock upload that returns a consistent URL"""
+        return (
+            "https://maisonblobstorage.blob.core.windows.net/"
+            "property-images/test-image.jpg"
+        )
 
     def delete_image(self, image_url):
+        """Mock delete that does nothing"""
         pass
 
 

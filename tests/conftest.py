@@ -11,31 +11,40 @@ from datetime import datetime, UTC
 from unittest.mock import patch
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def app():
     """Create application for the tests."""
     app = create_app("testing")
 
-    # Set up the test database
     with app.app_context():
+        # Create tables
         db.create_all()
-
-        # Create test user
-        user = User(email="test@example.com", name="Test User")
-        db.session.add(user)
-        db.session.commit()
-
-    yield app
-
-    # Clean up
-    with app.app_context():
+        yield app
+        # Clean up
         db.session.remove()
         db.drop_all()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
+def session(app):
+    """Create a new database session for a test."""
+    with app.app_context():
+        # Create tables
+        db.create_all()
+
+        # Get session
+        session = db.session
+
+        yield session
+
+        # Clean up
+        session.close()
+        db.drop_all()
+
+
+@pytest.fixture(scope="function")
 def client(app):
-    """A test client for the app."""
+    """Test client"""
     return app.test_client()
 
 
@@ -62,7 +71,8 @@ def test_user(session):
     )
     session.add(user)
     session.commit()
-    return session.get(User, user.id)
+    session.refresh(user)  # Ensure we have the latest data
+    return user
 
 
 @pytest.fixture(scope="function")
@@ -143,23 +153,6 @@ def init_database(app, session, test_user):
     return property
 
 
-@pytest.fixture(scope="function")
-def session(app):
-    """Create a new database session for a test."""
-    with app.app_context():
-        # Create tables
-        db.create_all()
-
-        # Get session
-        session = db.session
-
-        yield session
-
-        # Clean up
-        session.close()
-        db.drop_all()
-
-
 @pytest.fixture
 def sample_property(test_user):
     """Sample property data for tests."""
@@ -204,30 +197,17 @@ def sample_property(test_user):
 
 
 @pytest.fixture(autouse=True)
-def mock_services():
+def mock_services(monkeypatch):
     """Mock all external services for tests"""
-    with (
-        patch(
-            "app.blob_storage.BlobStorageService.upload_image"
-        ) as mock_upload,
-        patch(
-            "app.blob_storage.BlobStorageService.delete_image"
-        ) as mock_delete,
-        patch("app.utils.geocode_address") as mock_geocode,
-    ):
+    # Ensure we're using the mock service
+    monkeypatch.setattr(
+        "app.blob_storage.BlobStorageService",
+        "app.blob_storage.MockBlobStorageService",
+    )
 
-        # Set up mock returns
-        mock_upload.return_value = (
-            "https://maisonblobstorage.blob.core.windows.net/"
-            "property-images/test-image.jpg"
-        )
+    with patch("app.utils.geocode_address") as mock_geocode:
         mock_geocode.return_value = (51.5074, -0.1278)  # London coordinates
-
-        yield {
-            "upload": mock_upload,
-            "delete": mock_delete,
-            "geocode": mock_geocode,
-        }
+        yield mock_geocode
 
 
 @pytest.fixture(autouse=True)
