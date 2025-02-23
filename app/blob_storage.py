@@ -6,6 +6,10 @@ from app.exceptions import BlobStorageError
 class MockBlobStorageService:
     """Mock service for testing"""
 
+    def __init__(self):
+        """Mock init that doesn't need connection string"""
+        pass  # No need to initialize anything for mock
+
     def upload_image(self, image_data, content_type):
         """Mock upload that returns a consistent URL"""
         return (
@@ -23,7 +27,9 @@ try:
 
     class BlobStorageService:
         def __init__(self):
-            connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+            connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+            if not connection_string:
+                raise ValueError("Azure Storage connection string not set")
             self.blob_service_client = (
                 BlobServiceClient.from_connection_string(connection_string)
             )
