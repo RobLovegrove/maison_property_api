@@ -50,9 +50,7 @@ class PropertyDetailsSchema(Schema):
         unknown = EXCLUDE
 
     description = fields.Str(required=True)
-    property_type = fields.Str(required=True)
     construction_year = fields.Int(required=True)
-    parking_spaces = fields.Int(required=True)
     heating_type = fields.Str(required=True)
 
 
@@ -81,6 +79,7 @@ class PropertyCreateSchema(Schema):
     features = fields.Nested(PropertyFeaturesSchema, required=False)
     details = fields.Nested(PropertyDetailsSchema, required=False)
     media = fields.List(fields.Nested(PropertyMediaSchema), required=False)
+    user_id = fields.UUID(required=True)
 
 
 class PropertyUpdateSchema(Schema):
@@ -116,7 +115,7 @@ class PropertyListSchema(Schema):
     bathrooms = fields.Int()
     main_image_url = fields.URL(allow_none=True)
     created_at = fields.DateTime(format="iso")
-    owner_id = fields.Int(required=True)
+    owner_id = fields.UUID(required=True)
     address = fields.Nested(
         AddressSchema(only=("street", "city", "postcode")), dump_only=True
     )
@@ -135,4 +134,5 @@ class PropertySchema(Schema):
     image_urls = fields.List(fields.String())
     floorplan_url = fields.String()
     created_at = fields.DateTime(dump_only=True)
+    owner_id = fields.UUID(required=True)
     # ... rest of schema

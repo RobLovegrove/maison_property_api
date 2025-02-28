@@ -1,0 +1,983 @@
+Script started on Fri Feb 28 10:22:10 2025
+
+The default interactive shell is now zsh.
+To update your account to use zsh, please run `chsh -s /bin/zsh`.
+For more details, please visit https://support.apple.com/kb/HT208050.
+[?1034h]633;A(.venv) Robs-MacBook-Pro:properties_api roblovegrove$ ]633;B./scripts/setup_test_db.sh 
++ echo 'Setting up test database...'
+Setting up test database...
++ pg_isready
+/tmp:5432 - accepting connections
++ echo 'Current Python path: '
+Current Python path: 
+++ pwd
++ echo 'Current directory: /Users/roblovegrove/Documents/maison/properties_api'
+Current directory: /Users/roblovegrove/Documents/maison/properties_api
++ echo 'Dropping existing test database...'
+Dropping existing test database...
++ dropdb test_db --if-exists
+NOTICE:  database "test_db" does not exist, skipping
++ echo 'Creating fresh test database...'
+Creating fresh test database...
++ createdb test_db
++ echo 'Setting environment variables...'
+Setting environment variables...
++ export FLASK_APP=wsgi.py
++ FLASK_APP=wsgi.py
++ export FLASK_ENV=testing
++ FLASK_ENV=testing
++ export TEST_DATABASE_URL=postgresql://roblovegrove@localhost:5432/test_db
++ TEST_DATABASE_URL=postgresql://roblovegrove@localhost:5432/test_db
+++ pwd
++ export PYTHONPATH=/Users/roblovegrove/Documents/maison/properties_api:
++ PYTHONPATH=/Users/roblovegrove/Documents/maison/properties_api:
++ echo 'Checking Flask app...'
+Checking Flask app...
++ flask --version
+Python 3.11.11
+Flask 2.3.3
+Werkzeug 2.3.7
++ echo 'Checking database URL...'
+Checking database URL...
++ python3 -c '
+from app import create_app
+app = create_app('\''testing'\'')
+with app.app_context():
+    print(f'\''Database URL: {app.config["SQLALCHEMY_DATABASE_URI"]}'\'')
+'
+Database URL: postgresql://roblovegrove@localhost:5432/test_db
++ echo 'Creating database tables...'
+Creating database tables...
++ python3 -c '
+from app import create_app, db
+from sqlalchemy import inspect
+app = create_app('\''testing'\'')
+with app.app_context():
+    db.create_all()
+    inspector = inspect(db.engine)
+    print('\''Tables created:'\'', inspector.get_table_names())
+'
+Tables created: ['users', 'properties', 'property_details', 'addresses', 'property_specs', 'property_features', 'property_media']
++ echo 'Verifying database tables...'
+Verifying database tables...
++ psql -h localhost -U roblovegrove -d test_db -c '\dt'
+                 List of relations
+ Schema |       Name        | Type  |    Owner     
+--------+-------------------+-------+--------------
+ public | addresses         | table | roblovegrove
+ public | properties        | table | roblovegrove
+ public | property_details  | table | roblovegrove
+ public | property_features | table | roblovegrove
+ public | property_media    | table | roblovegrove
+ public | property_specs    | table | roblovegrove
+ public | users             | table | roblovegrove
+(7 rows)
+
++ echo 'Cleaning up existing tables...'
+Cleaning up existing tables...
++ psql -h localhost -U roblovegrove -d test_db -c '
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO roblovegrove;
+GRANT ALL ON SCHEMA public TO public;
+'
+NOTICE:  drop cascades to 7 other objects
+DETAIL:  drop cascades to table users
+drop cascades to table properties
+drop cascades to table property_details
+drop cascades to table addresses
+drop cascades to table property_specs
+drop cascades to table property_features
+drop cascades to table property_media
+GRANT
++ echo 'Creating fresh tables...'
+Creating fresh tables...
++ python3 -c '
+from app import create_app, db
+app = create_app('\''testing'\'')
+with app.app_context():
+    db.create_all()
+'
++ echo 'Running tests...'
+Running tests...
++ pytest -v --tb=short
+[1m================================================== test session starts ==================================================[0m
+platform darwin -- Python 3.11.11, pytest-8.0.0, pluggy-1.5.0 -- /Users/roblovegrove/Documents/maison/properties_api/.venv/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/roblovegrove/Documents/maison/properties_api
+plugins: flask-1.3.0, Faker-36.1.1
+[1mcollecting ... [0m[1mcollected 15 items                                                                                                      [0m
+
+tests/test_api.py::test_health_check [32mPASSED[0m[32m                                                                       [  6%][0m
+tests/test_api.py::test_create_property [31mERROR[0m[31m                                                                     [ 13%][0m
+tests/test_api.py::test_get_property [31mERROR[0m[31m                                                                        [ 20%][0m
+tests/test_api.py::test_update_property [31mERROR[0m[31m                                                                     [ 26%][0m
+tests/test_api.py::test_delete_property [31mERROR[0m[31m                                                                     [ 33%][0m
+tests/test_api.py::test_get_properties_list [31mERROR[0m[31m                                                                 [ 40%][0m
+tests/test_properties.py::test_get_properties_empty [32mPASSED[0m[31m                                                        [ 46%][0m
+tests/test_properties.py::test_create_property [31mERROR[0m[31m                                                              [ 53%][0m
+tests/test_properties.py::test_get_property_detail [31mERROR[0m[31m                                                          [ 60%][0m
+tests/test_properties.py::test_get_property_without_media [31mERROR[0m[31m                                                   [ 66%][0m
+tests/test_properties.py::test_get_nonexistent_property [32mPASSED[0m[31m                                                    [ 73%][0m
+tests/test_properties.py::test_update_property [31mERROR[0m[31m                                                              [ 80%][0m
+tests/test_properties.py::test_delete_property [31mERROR[0m[31m                                                              [ 86%][0m
+tests/test_properties.py::test_filter_properties [31mERROR[0m[31m                                                            [ 93%][0m
+tests/test_properties.py::test_get_user_properties [31mERROR[0m[31m                                                          [100%][0m
+
+======================================================== ERRORS =========================================================
+[31m[1m________________________________________ ERROR at setup of test_create_property _________________________________________[0m
+[1m[31mtests/test_api.py[0m:35: in test_user
+    user = User(
+[1m[31m<string>[0m:4: in __init__
+    ???
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m__________________________________________ ERROR at setup of test_get_property __________________________________________[0m
+[1m[31mtests/test_api.py[0m:35: in test_user
+    user = User(
+[1m[31m<string>[0m:4: in __init__
+    ???
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m________________________________________ ERROR at setup of test_update_property _________________________________________[0m
+[1m[31mtests/test_api.py[0m:35: in test_user
+    user = User(
+[1m[31m<string>[0m:4: in __init__
+    ???
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m________________________________________ ERROR at setup of test_delete_property _________________________________________[0m
+[1m[31mtests/test_api.py[0m:35: in test_user
+    user = User(
+[1m[31m<string>[0m:4: in __init__
+    ???
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m______________________________________ ERROR at setup of test_get_properties_list _______________________________________[0m
+[1m[31mtests/test_api.py[0m:35: in test_user
+    user = User(
+[1m[31m<string>[0m:4: in __init__
+    ???
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m________________________________________ ERROR at setup of test_create_property _________________________________________[0m
+[1m[31mtests/conftest.py[0m:68: in test_user
+    user = User(
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m______________________________________ ERROR at setup of test_get_property_detail _______________________________________[0m
+[1m[31mtests/conftest.py[0m:68: in test_user
+    user = User(
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m___________________________________ ERROR at setup of test_get_property_without_media ___________________________________[0m
+[1m[31mtests/conftest.py[0m:68: in test_user
+    user = User(
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m________________________________________ ERROR at setup of test_update_property _________________________________________[0m
+[1m[31mtests/conftest.py[0m:68: in test_user
+    user = User(
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m________________________________________ ERROR at setup of test_delete_property _________________________________________[0m
+[1m[31mtests/conftest.py[0m:68: in test_user
+    user = User(
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m_______________________________________ ERROR at setup of test_filter_properties ________________________________________[0m
+[1m[31mtests/conftest.py[0m:68: in test_user
+    user = User(
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m______________________________________ ERROR at setup of test_get_user_properties _______________________________________[0m
+[1m[31mtests/conftest.py[0m:68: in test_user
+    user = User(
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[36m[1m================================================ short test summary info ================================================[0m
+[31mERROR[0m tests/test_api.py::[1mtest_create_property[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_api.py::[1mtest_get_property[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_api.py::[1mtest_update_property[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_api.py::[1mtest_delete_property[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_api.py::[1mtest_get_properties_list[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_properties.py::[1mtest_create_property[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_properties.py::[1mtest_get_property_detail[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_properties.py::[1mtest_get_property_without_media[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_properties.py::[1mtest_update_property[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_properties.py::[1mtest_delete_property[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_properties.py::[1mtest_filter_properties[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_properties.py::[1mtest_get_user_properties[0m - TypeError: 'email' is an invalid keyword argument for User
+[31m============================================= [32m3 passed[0m, [31m[1m12 errors[0m[31m in 4.17s[0m[31m ==============================================[0m
+]633;A(.venv) Robs-MacBook-Pro:properties_api roblovegrove$ ]633;Bclear
+[3J[H[2J]633;A(.venv) Robs-MacBook-Pro:properties_api roblovegrove$ ]633;Bclear./scripts/setup_test_db.sh 
++ echo 'Setting up test database...'
+Setting up test database...
++ pg_isready
+/tmp:5432 - accepting connections
++ echo 'Current Python path: '
+Current Python path: 
+++ pwd
++ echo 'Current directory: /Users/roblovegrove/Documents/maison/properties_api'
+Current directory: /Users/roblovegrove/Documents/maison/properties_api
++ echo 'Dropping existing test database...'
+Dropping existing test database...
++ dropdb test_db --if-exists
++ echo 'Creating fresh test database...'
+Creating fresh test database...
++ createdb test_db
++ echo 'Setting environment variables...'
+Setting environment variables...
++ export FLASK_APP=wsgi.py
++ FLASK_APP=wsgi.py
++ export FLASK_ENV=testing
++ FLASK_ENV=testing
++ export TEST_DATABASE_URL=postgresql://roblovegrove@localhost:5432/test_db
++ TEST_DATABASE_URL=postgresql://roblovegrove@localhost:5432/test_db
+++ pwd
++ export PYTHONPATH=/Users/roblovegrove/Documents/maison/properties_api:
++ PYTHONPATH=/Users/roblovegrove/Documents/maison/properties_api:
++ echo 'Checking Flask app...'
+Checking Flask app...
++ flask --version
+Python 3.11.11
+Flask 2.3.3
+Werkzeug 2.3.7
++ echo 'Checking database URL...'
+Checking database URL...
++ python3 -c '
+from app import create_app
+app = create_app('\''testing'\'')
+with app.app_context():
+    print(f'\''Database URL: {app.config["SQLALCHEMY_DATABASE_URI"]}'\'')
+'
+Database URL: postgresql://roblovegrove@localhost:5432/test_db
++ echo 'Creating database tables...'
+Creating database tables...
++ python3 -c '
+from app import create_app, db
+from sqlalchemy import inspect
+app = create_app('\''testing'\'')
+with app.app_context():
+    db.create_all()
+    inspector = inspect(db.engine)
+    print('\''Tables created:'\'', inspector.get_table_names())
+'
+Tables created: ['users', 'properties', 'property_details', 'addresses', 'property_specs', 'property_features', 'property_media']
++ echo 'Verifying database tables...'
+Verifying database tables...
++ psql -h localhost -U roblovegrove -d test_db -c '\dt'
+                 List of relations
+ Schema |       Name        | Type  |    Owner     
+--------+-------------------+-------+--------------
+ public | addresses         | table | roblovegrove
+ public | properties        | table | roblovegrove
+ public | property_details  | table | roblovegrove
+ public | property_features | table | roblovegrove
+ public | property_media    | table | roblovegrove
+ public | property_specs    | table | roblovegrove
+ public | users             | table | roblovegrove
+(7 rows)
+
++ echo 'Cleaning up existing tables...'
+Cleaning up existing tables...
++ psql -h localhost -U roblovegrove -d test_db -c '
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO roblovegrove;
+GRANT ALL ON SCHEMA public TO public;
+'
+NOTICE:  drop cascades to 7 other objects
+DETAIL:  drop cascades to table users
+drop cascades to table properties
+drop cascades to table property_details
+drop cascades to table addresses
+drop cascades to table property_specs
+drop cascades to table property_features
+drop cascades to table property_media
+GRANT
++ echo 'Creating fresh tables...'
+Creating fresh tables...
++ python3 -c '
+from app import create_app, db
+app = create_app('\''testing'\'')
+with app.app_context():
+    db.create_all()
+'
++ echo 'Running tests...'
+Running tests...
++ pytest -v --tb=short
+[1m================================================== test session starts ==================================================[0m
+platform darwin -- Python 3.11.11, pytest-8.0.0, pluggy-1.5.0 -- /Users/roblovegrove/Documents/maison/properties_api/.venv/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/roblovegrove/Documents/maison/properties_api
+plugins: flask-1.3.0, Faker-36.1.1
+[1mcollecting ... [0m[1mcollected 15 items                                                                                                      [0m
+
+tests/test_api.py::test_health_check [32mPASSED[0m[32m                                                                       [  6%][0m
+tests/test_api.py::test_create_property [31mFAILED[0m[31m                                                                    [ 13%][0m
+tests/test_api.py::test_get_property [31mFAILED[0m[31m                                                                       [ 20%][0m
+tests/test_api.py::test_update_property [31mFAILED[0m[31m                                                                    [ 26%][0m
+tests/test_api.py::test_delete_property [31mFAILED[0m[31m                                                                    [ 33%][0m
+tests/test_api.py::test_get_properties_list [31mFAILED[0m[31m                                                                [ 40%][0m
+tests/test_properties.py::test_get_properties_empty [32mPASSED[0m[31m                                                        [ 46%][0m
+tests/test_properties.py::test_create_property [31mERROR[0m[31m                                                              [ 53%][0m
+tests/test_properties.py::test_get_property_detail [31mERROR[0m[31m                                                          [ 60%][0m
+tests/test_properties.py::test_get_property_without_media [31mERROR[0m[31m                                                   [ 66%][0m
+tests/test_properties.py::test_get_nonexistent_property [32mPASSED[0m[31m                                                    [ 73%][0m
+tests/test_properties.py::test_update_property [31mERROR[0m[31m                                                              [ 80%][0m
+tests/test_properties.py::test_delete_property [31mERROR[0m[31m                                                              [ 86%][0m
+tests/test_properties.py::test_filter_properties [31mERROR[0m[31m                                                            [ 93%][0m
+tests/test_properties.py::test_get_user_properties [31mERROR[0m[31m                                                          [100%][0m
+
+======================================================== ERRORS =========================================================
+[31m[1m________________________________________ ERROR at setup of test_create_property _________________________________________[0m
+[1m[31mtests/conftest.py[0m:68: in test_user
+    user = User(
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m______________________________________ ERROR at setup of test_get_property_detail _______________________________________[0m
+[1m[31mtests/conftest.py[0m:68: in test_user
+    user = User(
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m___________________________________ ERROR at setup of test_get_property_without_media ___________________________________[0m
+[1m[31mtests/conftest.py[0m:68: in test_user
+    user = User(
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m________________________________________ ERROR at setup of test_update_property _________________________________________[0m
+[1m[31mtests/conftest.py[0m:68: in test_user
+    user = User(
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m________________________________________ ERROR at setup of test_delete_property _________________________________________[0m
+[1m[31mtests/conftest.py[0m:68: in test_user
+    user = User(
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m_______________________________________ ERROR at setup of test_filter_properties ________________________________________[0m
+[1m[31mtests/conftest.py[0m:68: in test_user
+    user = User(
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+[31m[1m______________________________________ ERROR at setup of test_get_user_properties _______________________________________[0m
+[1m[31mtests/conftest.py[0m:68: in test_user
+    user = User(
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:566: in _initialize_instance
+    with util.safe_reraise():
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py[0m:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py[0m:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+[1m[31m.venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py[0m:2142: in _declarative_constructor
+    raise TypeError(
+[1m[31mE   TypeError: 'email' is an invalid keyword argument for User[0m
+======================================================= FAILURES ========================================================
+[31m[1m_________________________________________________ test_create_property __________________________________________________[0m
+[1m[31mtests/test_api.py[0m:93: in test_create_property
+    property_id = create_test_property(client, test_user, session)
+[1m[31mtests/test_api.py[0m:78: in create_test_property
+    ("data", json.dumps(data)),
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py[0m:231: in dumps
+    return _default_encoder.encode(obj)
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py[0m:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py[0m:258: in iterencode
+    return _iterencode(o, 0)
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py[0m:180: in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+[1m[31mE   TypeError: Object of type UUID is not JSON serializable[0m
+[31m[1m___________________________________________________ test_get_property ___________________________________________________[0m
+[1m[31mtests/test_api.py[0m:100: in test_get_property
+    property_id = create_test_property(client, test_user, session)
+[1m[31mtests/test_api.py[0m:78: in create_test_property
+    ("data", json.dumps(data)),
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py[0m:231: in dumps
+    return _default_encoder.encode(obj)
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py[0m:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py[0m:258: in iterencode
+    return _iterencode(o, 0)
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py[0m:180: in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+[1m[31mE   TypeError: Object of type UUID is not JSON serializable[0m
+[31m[1m_________________________________________________ test_update_property __________________________________________________[0m
+[1m[31mtests/test_api.py[0m:117: in test_update_property
+    property_id = create_test_property(client, test_user, session)
+[1m[31mtests/test_api.py[0m:78: in create_test_property
+    ("data", json.dumps(data)),
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py[0m:231: in dumps
+    return _default_encoder.encode(obj)
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py[0m:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py[0m:258: in iterencode
+    return _iterencode(o, 0)
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py[0m:180: in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+[1m[31mE   TypeError: Object of type UUID is not JSON serializable[0m
+[31m[1m_________________________________________________ test_delete_property __________________________________________________[0m
+[1m[31mtests/test_api.py[0m:138: in test_delete_property
+    property_id = create_test_property(client, test_user, session)
+[1m[31mtests/test_api.py[0m:78: in create_test_property
+    ("data", json.dumps(data)),
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py[0m:231: in dumps
+    return _default_encoder.encode(obj)
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py[0m:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py[0m:258: in iterencode
+    return _iterencode(o, 0)
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py[0m:180: in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+[1m[31mE   TypeError: Object of type UUID is not JSON serializable[0m
+[31m[1m_______________________________________________ test_get_properties_list ________________________________________________[0m
+[1m[31mtests/test_api.py[0m:152: in test_get_properties_list
+    create_test_property(client, test_user, session)
+[1m[31mtests/test_api.py[0m:78: in create_test_property
+    ("data", json.dumps(data)),
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py[0m:231: in dumps
+    return _default_encoder.encode(obj)
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py[0m:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py[0m:258: in iterencode
+    return _iterencode(o, 0)
+[1m[31m/usr/local/Cellar/python@3.11/3.11.11/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py[0m:180: in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+[1m[31mE   TypeError: Object of type UUID is not JSON serializable[0m
+[36m[1m================================================ short test summary info ================================================[0m
+[31mFAILED[0m tests/test_api.py::[1mtest_create_property[0m - TypeError: Object of type UUID is not JSON serializable
+[31mFAILED[0m tests/test_api.py::[1mtest_get_property[0m - TypeError: Object of type UUID is not JSON serializable
+[31mFAILED[0m tests/test_api.py::[1mtest_update_property[0m - TypeError: Object of type UUID is not JSON serializable
+[31mFAILED[0m tests/test_api.py::[1mtest_delete_property[0m - TypeError: Object of type UUID is not JSON serializable
+[31mFAILED[0m tests/test_api.py::[1mtest_get_properties_list[0m - TypeError: Object of type UUID is not JSON serializable
+[31mERROR[0m tests/test_properties.py::[1mtest_create_property[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_properties.py::[1mtest_get_property_detail[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_properties.py::[1mtest_get_property_without_media[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_properties.py::[1mtest_update_property[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_properties.py::[1mtest_delete_property[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_properties.py::[1mtest_filter_properties[0m - TypeError: 'email' is an invalid keyword argument for User
+[31mERROR[0m tests/test_properties.py::[1mtest_get_user_properties[0m - TypeError: 'email' is an invalid keyword argument for User
+[31m========================================= [31m[1m5 failed[0m, [32m3 passed[0m, [31m[1m7 errors[0m[31m in 2.01s[0m[31m =========================================[0m
+]633;A(.venv) Robs-MacBook-Pro:properties_api roblovegrove$ ]633;B./scripts/setup_test_db.sh clear[K
+[3J[H[2J]633;A(.venv) Robs-MacBook-Pro:properties_api roblovegrove$ ]633;Bclear./scripts/setup_test_db.sh 
++ echo 'Setting up test database...'
+Setting up test database...
++ pg_isready
+/tmp:5432 - accepting connections
++ echo 'Current Python path: '
+Current Python path: 
+++ pwd
++ echo 'Current directory: /Users/roblovegrove/Documents/maison/properties_api'
+Current directory: /Users/roblovegrove/Documents/maison/properties_api
++ echo 'Dropping existing test database...'
+Dropping existing test database...
++ dropdb test_db --if-exists
++ echo 'Creating fresh test database...'
+Creating fresh test database...
++ createdb test_db
++ echo 'Setting environment variables...'
+Setting environment variables...
++ export FLASK_APP=wsgi.py
++ FLASK_APP=wsgi.py
++ export FLASK_ENV=testing
++ FLASK_ENV=testing
++ export TEST_DATABASE_URL=postgresql://roblovegrove@localhost:5432/test_db
++ TEST_DATABASE_URL=postgresql://roblovegrove@localhost:5432/test_db
+++ pwd
++ export PYTHONPATH=/Users/roblovegrove/Documents/maison/properties_api:
++ PYTHONPATH=/Users/roblovegrove/Documents/maison/properties_api:
++ echo 'Checking Flask app...'
+Checking Flask app...
++ flask --version
+Python 3.11.11
+Flask 2.3.3
+Werkzeug 2.3.7
++ echo 'Checking database URL...'
+Checking database URL...
++ python3 -c '
+from app import create_app
+app = create_app('\''testing'\'')
+with app.app_context():
+    print(f'\''Database URL: {app.config["SQLALCHEMY_DATABASE_URI"]}'\'')
+'
+Database URL: postgresql://roblovegrove@localhost:5432/test_db
++ echo 'Creating database tables...'
+Creating database tables...
++ python3 -c '
+from app import create_app, db
+from sqlalchemy import inspect
+app = create_app('\''testing'\'')
+with app.app_context():
+    db.create_all()
+    inspector = inspect(db.engine)
+    print('\''Tables created:'\'', inspector.get_table_names())
+'
+Tables created: ['users', 'properties', 'property_details', 'addresses', 'property_specs', 'property_features', 'property_media']
++ echo 'Verifying database tables...'
+Verifying database tables...
++ psql -h localhost -U roblovegrove -d test_db -c '\dt'
+                 List of relations
+ Schema |       Name        | Type  |    Owner     
+--------+-------------------+-------+--------------
+ public | addresses         | table | roblovegrove
+ public | properties        | table | roblovegrove
+ public | property_details  | table | roblovegrove
+ public | property_features | table | roblovegrove
+ public | property_media    | table | roblovegrove
+ public | property_specs    | table | roblovegrove
+ public | users             | table | roblovegrove
+(7 rows)
+
++ echo 'Cleaning up existing tables...'
+Cleaning up existing tables...
++ psql -h localhost -U roblovegrove -d test_db -c '
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO roblovegrove;
+GRANT ALL ON SCHEMA public TO public;
+'
+NOTICE:  drop cascades to 7 other objects
+DETAIL:  drop cascades to table users
+drop cascades to table properties
+drop cascades to table property_details
+drop cascades to table addresses
+drop cascades to table property_specs
+drop cascades to table property_features
+drop cascades to table property_media
+GRANT
++ echo 'Creating fresh tables...'
+Creating fresh tables...
++ python3 -c '
+from app import create_app, db
+app = create_app('\''testing'\'')
+with app.app_context():
+    db.create_all()
+'
++ echo 'Running tests...'
+Running tests...
++ pytest -v --tb=short
+[1m================================================== test session starts ==================================================[0m
+platform darwin -- Python 3.11.11, pytest-8.0.0, pluggy-1.5.0 -- /Users/roblovegrove/Documents/maison/properties_api/.venv/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/roblovegrove/Documents/maison/properties_api
+plugins: flask-1.3.0, Faker-36.1.1
+[1mcollecting ... [0m[1mcollected 15 items                                                                                                      [0m
+
+tests/test_api.py::test_health_check [32mPASSED[0m[32m                                                                       [  6%][0m
+tests/test_api.py::test_create_property [32mPASSED[0m[32m                                                                    [ 13%][0m
+tests/test_api.py::test_get_property [32mPASSED[0m[32m                                                                       [ 20%][0m
+tests/test_api.py::test_update_property [32mPASSED[0m[32m                                                                    [ 26%][0m
+tests/test_api.py::test_delete_property [32mPASSED[0m[32m                                                                    [ 33%][0m
+tests/test_api.py::test_get_properties_list [32mPASSED[0m[32m                                                                [ 40%][0m
+tests/test_properties.py::test_get_properties_empty [32mPASSED[0m[32m                                                        [ 46%][0m
+tests/test_properties.py::test_create_property [32mPASSED[0m[32m                                                             [ 53%][0m
+tests/test_properties.py::test_get_property_detail [32mPASSED[0m[32m                                                         [ 60%][0m
+tests/test_properties.py::test_get_property_without_media [32mPASSED[0m[32m                                                  [ 66%][0m
+tests/test_properties.py::test_get_nonexistent_property [32mPASSED[0m[32m                                                    [ 73%][0m
+tests/test_properties.py::test_update_property [32mPASSED[0m[32m                                                             [ 80%][0m
+tests/test_properties.py::test_delete_property [32mPASSED[0m[32m                                                             [ 86%][0m
+tests/test_properties.py::test_filter_properties [32mPASSED[0m[32m                                                           [ 93%][0m
+tests/test_properties.py::test_get_user_properties [31mFAILED[0m[31m                                                         [100%][0m
+
+======================================================= FAILURES ========================================================
+[31m[1m_______________________________________________ test_get_user_properties ________________________________________________[0m
+[1m[31mtests/test_properties.py[0m:131: in test_get_user_properties
+    assert all(p["owner_id"] == init_database.user_id for p in response.json)
+[1m[31mE   assert False[0m
+[1m[31mE    +  where False = all(<generator object test_get_user_properties.<locals>.<genexpr> at 0x11034e7a0>)[0m
+[36m[1m================================================ short test summary info ================================================[0m
+[31mFAILED[0m tests/test_properties.py::[1mtest_get_user_properties[0m - assert False
+[31m============================================= [31m[1m1 failed[0m, [32m14 passed[0m[31m in 7.57s[0m[31m ==============================================[0m
+]633;A(.venv) Robs-MacBook-Pro:properties_api roblovegrove$ ]633;B./scripts/setup_test_db.sh clear[K
+[3J[H[2J]633;A(.venv) Robs-MacBook-Pro:properties_api roblovegrove$ ]633;Bclear./scripts/setup_test_db.sh 
++ echo 'Setting up test database...'
+Setting up test database...
++ pg_isready
+/tmp:5432 - accepting connections
++ echo 'Current Python path: '
+Current Python path: 
+++ pwd
++ echo 'Current directory: /Users/roblovegrove/Documents/maison/properties_api'
+Current directory: /Users/roblovegrove/Documents/maison/properties_api
++ echo 'Dropping existing test database...'
+Dropping existing test database...
++ dropdb test_db --if-exists
++ echo 'Creating fresh test database...'
+Creating fresh test database...
++ createdb test_db
++ echo 'Setting environment variables...'
+Setting environment variables...
++ export FLASK_APP=wsgi.py
++ FLASK_APP=wsgi.py
++ export FLASK_ENV=testing
++ FLASK_ENV=testing
++ export TEST_DATABASE_URL=postgresql://roblovegrove@localhost:5432/test_db
++ TEST_DATABASE_URL=postgresql://roblovegrove@localhost:5432/test_db
+++ pwd
++ export PYTHONPATH=/Users/roblovegrove/Documents/maison/properties_api:
++ PYTHONPATH=/Users/roblovegrove/Documents/maison/properties_api:
++ echo 'Checking Flask app...'
+Checking Flask app...
++ flask --version
+Python 3.11.11
+Flask 2.3.3
+Werkzeug 2.3.7
++ echo 'Checking database URL...'
+Checking database URL...
++ python3 -c '
+from app import create_app
+app = create_app('\''testing'\'')
+with app.app_context():
+    print(f'\''Database URL: {app.config["SQLALCHEMY_DATABASE_URI"]}'\'')
+'
+Database URL: postgresql://roblovegrove@localhost:5432/test_db
++ echo 'Creating database tables...'
+Creating database tables...
++ python3 -c '
+from app import create_app, db
+from sqlalchemy import inspect
+app = create_app('\''testing'\'')
+with app.app_context():
+    db.create_all()
+    inspector = inspect(db.engine)
+    print('\''Tables created:'\'', inspector.get_table_names())
+'
+Tables created: ['users', 'properties', 'property_details', 'addresses', 'property_specs', 'property_features', 'property_media']
++ echo 'Verifying database tables...'
+Verifying database tables...
++ psql -h localhost -U roblovegrove -d test_db -c '\dt'
+                 List of relations
+ Schema |       Name        | Type  |    Owner     
+--------+-------------------+-------+--------------
+ public | addresses         | table | roblovegrove
+ public | properties        | table | roblovegrove
+ public | property_details  | table | roblovegrove
+ public | property_features | table | roblovegrove
+ public | property_media    | table | roblovegrove
+ public | property_specs    | table | roblovegrove
+ public | users             | table | roblovegrove
+(7 rows)
+
++ echo 'Cleaning up existing tables...'
+Cleaning up existing tables...
++ psql -h localhost -U roblovegrove -d test_db -c '
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO roblovegrove;
+GRANT ALL ON SCHEMA public TO public;
+'
+NOTICE:  drop cascades to 7 other objects
+DETAIL:  drop cascades to table users
+drop cascades to table properties
+drop cascades to table property_details
+drop cascades to table addresses
+drop cascades to table property_specs
+drop cascades to table property_features
+drop cascades to table property_media
+GRANT
++ echo 'Creating fresh tables...'
+Creating fresh tables...
++ python3 -c '
+from app import create_app, db
+app = create_app('\''testing'\'')
+with app.app_context():
+    db.create_all()
+'
++ echo 'Running tests...'
+Running tests...
++ pytest -v --tb=short
+[1m================================================== test session starts ==================================================[0m
+platform darwin -- Python 3.11.11, pytest-8.0.0, pluggy-1.5.0 -- /Users/roblovegrove/Documents/maison/properties_api/.venv/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/roblovegrove/Documents/maison/properties_api
+plugins: flask-1.3.0, Faker-36.1.1
+[1mcollecting ... [0m[1mcollected 15 items                                                                                                      [0m
+
+tests/test_api.py::test_health_check [32mPASSED[0m[32m                                                                       [  6%][0m
+tests/test_api.py::test_create_property [32mPASSED[0m[32m                                                                    [ 13%][0m
+tests/test_api.py::test_get_property [32mPASSED[0m[32m                                                                       [ 20%][0m
+tests/test_api.py::test_update_property [32mPASSED[0m[32m                                                                    [ 26%][0m
+tests/test_api.py::test_delete_property [32mPASSED[0m[32m                                                                    [ 33%][0m
+tests/test_api.py::test_get_properties_list [32mPASSED[0m[32m                                                                [ 40%][0m
+tests/test_properties.py::test_get_properties_empty [32mPASSED[0m[32m                                                        [ 46%][0m
+tests/test_properties.py::test_create_property [32mPASSED[0m[32m                                                             [ 53%][0m
+tests/test_properties.py::test_get_property_detail [32mPASSED[0m[32m                                                         [ 60%][0m
+tests/test_properties.py::test_get_property_without_media [32mPASSED[0m[32m                                                  [ 66%][0m
+tests/test_properties.py::test_get_nonexistent_property [32mPASSED[0m[32m                                                    [ 73%][0m
+tests/test_properties.py::test_update_property [32mPASSED[0m[32m                                                             [ 80%][0m
+tests/test_properties.py::test_delete_property [32mPASSED[0m[32m                                                             [ 86%][0m
+tests/test_properties.py::test_filter_properties [32mPASSED[0m[32m                                                           [ 93%][0m
+tests/test_properties.py::test_get_user_properties [31mFAILED[0m[31m                                                         [100%][0m
+
+======================================================= FAILURES ========================================================
+[31m[1m_______________________________________________ test_get_user_properties ________________________________________________[0m
+[1m[31mtests/test_properties.py[0m:131: in test_get_user_properties
+    assert all(p["user_id"] == str(init_database.user_id) for p in response.json)
+[1m[31mtests/test_properties.py[0m:131: in <genexpr>
+    assert all(p["user_id"] == str(init_database.user_id) for p in response.json)
+[1m[31mE   KeyError: 'user_id'[0m
+[36m[1m================================================ short test summary info ================================================[0m
+[31mFAILED[0m tests/test_properties.py::[1mtest_get_user_properties[0m - KeyError: 'user_id'
+[31m============================================= [31m[1m1 failed[0m, [32m14 passed[0m[31m in 7.46s[0m[31m ==============================================[0m
+]633;A(.venv) Robs-MacBook-Pro:properties_api roblovegrove$ ]633;B./scripts/setup_test_db.sh clear[K
+[3J[H[2J]633;A(.venv) Robs-MacBook-Pro:properties_api roblovegrove$ ]633;Bclear./scripts/setup_test_db.sh 
++ echo 'Setting up test database...'
+Setting up test database...
++ pg_isready
+/tmp:5432 - accepting connections
++ echo 'Current Python path: '
+Current Python path: 
+++ pwd
++ echo 'Current directory: /Users/roblovegrove/Documents/maison/properties_api'
+Current directory: /Users/roblovegrove/Documents/maison/properties_api
++ echo 'Dropping existing test database...'
+Dropping existing test database...
++ dropdb test_db --if-exists
++ echo 'Creating fresh test database...'
+Creating fresh test database...
++ createdb test_db
++ echo 'Setting environment variables...'
+Setting environment variables...
++ export FLASK_APP=wsgi.py
++ FLASK_APP=wsgi.py
++ export FLASK_ENV=testing
++ FLASK_ENV=testing
++ export TEST_DATABASE_URL=postgresql://roblovegrove@localhost:5432/test_db
++ TEST_DATABASE_URL=postgresql://roblovegrove@localhost:5432/test_db
+++ pwd
++ export PYTHONPATH=/Users/roblovegrove/Documents/maison/properties_api:
++ PYTHONPATH=/Users/roblovegrove/Documents/maison/properties_api:
++ echo 'Checking Flask app...'
+Checking Flask app...
++ flask --version
+Python 3.11.11
+Flask 2.3.3
+Werkzeug 2.3.7
++ echo 'Checking database URL...'
+Checking database URL...
++ python3 -c '
+from app import create_app
+app = create_app('\''testing'\'')
+with app.app_context():
+    print(f'\''Database URL: {app.config["SQLALCHEMY_DATABASE_URI"]}'\'')
+'
+Database URL: postgresql://roblovegrove@localhost:5432/test_db
++ echo 'Creating database tables...'
+Creating database tables...
++ python3 -c '
+from app import create_app, db
+from sqlalchemy import inspect
+app = create_app('\''testing'\'')
+with app.app_context():
+    db.create_all()
+    inspector = inspect(db.engine)
+    print('\''Tables created:'\'', inspector.get_table_names())
+'
+Tables created: ['users', 'properties', 'property_details', 'addresses', 'property_specs', 'property_features', 'property_media']
++ echo 'Verifying database tables...'
+Verifying database tables...
++ psql -h localhost -U roblovegrove -d test_db -c '\dt'
+                 List of relations
+ Schema |       Name        | Type  |    Owner     
+--------+-------------------+-------+--------------
+ public | addresses         | table | roblovegrove
+ public | properties        | table | roblovegrove
+ public | property_details  | table | roblovegrove
+ public | property_features | table | roblovegrove
+ public | property_media    | table | roblovegrove
+ public | property_specs    | table | roblovegrove
+ public | users             | table | roblovegrove
+(7 rows)
+
++ echo 'Cleaning up existing tables...'
+Cleaning up existing tables...
++ psql -h localhost -U roblovegrove -d test_db -c '
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO roblovegrove;
+GRANT ALL ON SCHEMA public TO public;
+'
+NOTICE:  drop cascades to 7 other objects
+DETAIL:  drop cascades to table users
+drop cascades to table properties
+drop cascades to table property_details
+drop cascades to table addresses
+drop cascades to table property_specs
+drop cascades to table property_features
+drop cascades to table property_media
+GRANT
++ echo 'Creating fresh tables...'
+Creating fresh tables...
++ python3 -c '
+from app import create_app, db
+app = create_app('\''testing'\'')
+with app.app_context():
+    db.create_all()
+'
++ echo 'Running tests...'
+Running tests...
++ pytest -v --tb=short
+[1m================================================== test session starts ==================================================[0m
+platform darwin -- Python 3.11.11, pytest-8.0.0, pluggy-1.5.0 -- /Users/roblovegrove/Documents/maison/properties_api/.venv/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/roblovegrove/Documents/maison/properties_api
+plugins: flask-1.3.0, Faker-36.1.1
+[1mcollecting ... [0m[1mcollected 15 items                                                                                                      [0m
+
+tests/test_api.py::test_health_check [32mPASSED[0m[32m                                                                       [  6%][0m
+tests/test_api.py::test_create_property [32mPASSED[0m[32m                                                                    [ 13%][0m
+tests/test_api.py::test_get_property [32mPASSED[0m[32m                                                                       [ 20%][0m
+tests/test_api.py::test_update_property [32mPASSED[0m[32m                                                                    [ 26%][0m
+tests/test_api.py::test_delete_property [32mPASSED[0m[32m                                                                    [ 33%][0m
+tests/test_api.py::test_get_properties_list [32mPASSED[0m[32m                                                                [ 40%][0m
+tests/test_properties.py::test_get_properties_empty [32mPASSED[0m[32m                                                        [ 46%][0m
+tests/test_properties.py::test_create_property [32mPASSED[0m[32m                                                             [ 53%][0m
+tests/test_properties.py::test_get_property_detail [32mPASSED[0m[32m                                                         [ 60%][0m
+tests/test_properties.py::test_get_property_without_media [32mPASSED[0m[32m                                                  [ 66%][0m
+tests/test_properties.py::test_get_nonexistent_property [32mPASSED[0m[32m                                                    [ 73%][0m
+tests/test_properties.py::test_update_property [32mPASSED[0m[32m                                                             [ 80%][0m
+tests/test_properties.py::test_delete_property [32mPASSED[0m[32m                                                             [ 86%][0m
+tests/test_properties.py::test_filter_properties [32mPASSED[0m[32m                                                           [ 93%][0m
+tests/test_properties.py::test_get_user_properties [32mPASSED[0m[32m                                                         [100%][0m
+
+[32m================================================== [32m[1m15 passed[0m[32m in 7.22s[0m[32m ===================================================[0m
++ '[' 0 -eq 0 ']'
++ echo 'Tests passed! Cleaning up...'
+Tests passed! Cleaning up...
++ dropdb test_db
++ echo 'Test setup and execution complete!'
+Test setup and execution complete!
+]633;A(.venv) Robs-MacBook-Pro:properties_api roblovegrove$ ]633;Bfla[K[K[K./scripts/format_code.sh 
+[1mreformatted /Users/roblovegrove/Documents/maison/properties_api/tests/test_properties.py[0m
+[1mreformatted /Users/roblovegrove/Documents/maison/properties_api/app/properties.py[0m
+
+[1mAll done! ✨ 🍰 ✨[0m
+[34m[1m2 files [0m[1mreformatted[0m, [34m12 files [0mleft unchanged.
+]633;A(.venv) Robs-MacBook-Pro:properties_api roblovegrove$ ]633;Bflake8 app/ tests/
+]633;A(.venv) Robs-MacBook-Pro:properties_api roblovegrove$ ]633;B

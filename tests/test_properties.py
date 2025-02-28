@@ -9,7 +9,7 @@ def test_property_data(test_user):
     """Valid property data for tests."""
     return {
         "price": 350000,
-        "user_id": test_user.id,
+        "user_id": str(test_user.id),  # Convert UUID to string
         "specs": {
             "bedrooms": 3,
             "bathrooms": 2,
@@ -128,4 +128,13 @@ def test_get_user_properties(client, init_database):
     response = client.get(f"/api/properties/user/{init_database.user_id}")
     assert response.status_code == 200
     assert len(response.json) > 0
-    assert all(p["owner_id"] == init_database.user_id for p in response.json)
+
+    # Print response for debugging
+    print(
+        "Response JSON:", response.json[0].keys()
+    )  # Print keys of first property
+
+    # Try with owner_id instead of user_id
+    assert all(
+        p["owner_id"] == str(init_database.user_id) for p in response.json
+    )

@@ -72,9 +72,7 @@ def validate_property_data(data):
         details = data["details"]
         required_details = {
             "description": str,
-            "property_type": str,
             "construction_year": int,
-            "parking_spaces": int,
             "heating_type": str,
         }
         for field, field_type in required_details.items():
@@ -136,6 +134,9 @@ def get_properties():
                     "created_at": p.created_at.isoformat(),
                     "owner_id": p.user_id,
                     "address": {
+                        "house_number": (
+                            p.address.house_number if p.address else None
+                        ),
                         "street": p.address.street if p.address else None,
                         "city": p.address.city if p.address else None,
                         "postcode": p.address.postcode if p.address else None,
@@ -160,151 +161,139 @@ def get_properties():
 
 @bp.route("/<uuid:property_id>", methods=["GET"])
 def get_property(property_id):
-    """Get a single property by ID."""
+    """Get a specific property."""
     try:
-        result = db.session.get(
-            Property,
-            property_id,
-            options=[
-                joinedload(Property.address),
-                joinedload(Property.specs),
-                joinedload(Property.media),
-                joinedload(Property.details),
-                joinedload(Property.features),
-            ],
-        )
-
-        if result is None:
+        property_item = db.session.get(Property, property_id)
+        if property_item is None:
             return jsonify({"error": "Property not found"}), 404
 
-        image_urls = [
-            media.image_url
-            for media in result.media
-            if media.image_type != "floorplan"
-        ]
-
-        floorplan_url = next(
-            (
-                media.image_url
-                for media in result.media
-                if media.image_type == "floorplan"
-            ),
-            None,
-        )
-
-        return (
-            jsonify(
-                {
-                    "id": str(result.id),
-                    "price": result.price,
-                    "bedrooms": result.bedrooms,
-                    "bathrooms": result.bathrooms,
-                    "main_image_url": result.main_image_url,
-                    "image_urls": image_urls,
-                    "floorplan_url": floorplan_url,
-                    "created_at": result.created_at.isoformat(),
-                    "owner_id": result.user_id,
-                    "address": {
-                        "street": (
-                            result.address.street if result.address else None
-                        ),
-                        "city": (
-                            result.address.city if result.address else None
-                        ),
-                        "postcode": (
-                            result.address.postcode if result.address else None
-                        ),
-                        "latitude": (
-                            result.address.latitude if result.address else None
-                        ),
-                        "longitude": (
-                            result.address.longitude
-                            if result.address
-                            else None
-                        ),
-                    },
-                    "specs": (
-                        {
-                            "bedrooms": (
-                                result.specs.bedrooms if result.specs else None
-                            ),
-                            "bathrooms": (
-                                result.specs.bathrooms
-                                if result.specs
-                                else None
-                            ),
-                            "property_type": (
-                                result.specs.property_type
-                                if result.specs
-                                else None
-                            ),
-                            "square_footage": (
-                                result.specs.square_footage
-                                if result.specs
-                                else None
-                            ),
-                            "reception_rooms": (
-                                result.specs.reception_rooms
-                                if result.specs
-                                else None
-                            ),
-                            "epc_rating": (
-                                result.specs.epc_rating
-                                if result.specs
-                                else None
-                            ),
-                        }
-                        if result.specs
+        return jsonify(
+            {
+                "id": str(property_item.id),
+                "price": property_item.price,
+                "bedrooms": property_item.bedrooms,
+                "bathrooms": property_item.bathrooms,
+                "main_image_url": property_item.main_image_url,
+                "created_at": property_item.created_at.isoformat(),
+                "details": {
+                    "description": (
+                        property_item.details.description
+                        if property_item.details
                         else None
                     ),
-                    "details": {
-                        "description": (
-                            result.details.description
-                            if result.details
-                            else None
-                        ),
-                        "construction_year": (
-                            result.details.construction_year
-                            if result.details
-                            else None
-                        ),
-                        "heating_type": (
-                            result.details.heating_type
-                            if result.details
-                            else None
-                        ),
-                        "parking_spaces": (
-                            result.details.parking_spaces
-                            if result.details
-                            else None
-                        ),
-                    },
-                    "features": {
-                        "has_garden": (
-                            result.features.has_garden
-                            if result.features
-                            else False
-                        ),
-                        "garden_size": (
-                            result.features.garden_size
-                            if result.features
-                            else None
-                        ),
-                        "has_garage": (
-                            result.features.has_garage
-                            if result.features
-                            else False
-                        ),
-                        "parking_spaces": (
-                            result.features.parking_spaces
-                            if result.features
-                            else 0
-                        ),
-                    },
-                    "last_updated": result.last_updated.isoformat(),
-                }
-            ),
-            200,
+                    "construction_year": (
+                        property_item.details.construction_year
+                        if property_item.details
+                        else None
+                    ),
+                    "heating_type": (
+                        property_item.details.heating_type
+                        if property_item.details
+                        else None
+                    ),
+                },
+                "features": {
+                    "has_garden": (
+                        property_item.features.has_garden
+                        if property_item.features
+                        else False
+                    ),
+                    "garden_size": (
+                        property_item.features.garden_size
+                        if property_item.features
+                        else None
+                    ),
+                    "parking_spaces": (
+                        property_item.features.parking_spaces
+                        if property_item.features
+                        else 0
+                    ),
+                    "has_garage": (
+                        property_item.features.has_garage
+                        if property_item.features
+                        else False
+                    ),
+                },
+                "image_urls": [
+                    media.image_url
+                    for media in property_item.media
+                    if media.image_type != "floorplan"
+                ],
+                "floorplan_url": next(
+                    (
+                        media.image_url
+                        for media in property_item.media
+                        if media.image_type == "floorplan"
+                    ),
+                    None,
+                ),
+                "owner_id": str(property_item.user_id),
+                "address": {
+                    "house_number": (
+                        property_item.address.house_number
+                        if property_item.address
+                        else None
+                    ),
+                    "street": (
+                        property_item.address.street
+                        if property_item.address
+                        else None
+                    ),
+                    "city": (
+                        property_item.address.city
+                        if property_item.address
+                        else None
+                    ),
+                    "postcode": (
+                        property_item.address.postcode
+                        if property_item.address
+                        else None
+                    ),
+                    "latitude": (
+                        property_item.address.latitude
+                        if property_item.address
+                        else None
+                    ),
+                    "longitude": (
+                        property_item.address.longitude
+                        if property_item.address
+                        else None
+                    ),
+                },
+                "specs": {
+                    "bedrooms": (
+                        property_item.specs.bedrooms
+                        if property_item.specs
+                        else None
+                    ),
+                    "bathrooms": (
+                        property_item.specs.bathrooms
+                        if property_item.specs
+                        else None
+                    ),
+                    "property_type": (
+                        property_item.specs.property_type
+                        if property_item.specs
+                        else None
+                    ),
+                    "square_footage": (
+                        property_item.specs.square_footage
+                        if property_item.specs
+                        else None
+                    ),
+                    "reception_rooms": (
+                        property_item.specs.reception_rooms
+                        if property_item.specs
+                        else None
+                    ),
+                    "epc_rating": (
+                        property_item.specs.epc_rating
+                        if property_item.specs
+                        else None
+                    ),
+                },
+                "last_updated": property_item.last_updated.isoformat(),
+            }
         )
 
     except Exception as e:
@@ -381,7 +370,7 @@ def create_property():
             bedrooms=int(data["specs"]["bedrooms"]),
             bathrooms=float(data["specs"]["bathrooms"]),
             main_image_url=image_urls[0] if image_urls else None,
-            user_id=int(data["user_id"]),
+            user_id=data["user_id"],
             created_at=datetime.now(UTC),
         )
         db.session.add(property)
@@ -433,9 +422,7 @@ def create_property():
             details = PropertyDetail(
                 property_id=property_id,
                 description=data["details"]["description"],
-                property_type=data["details"]["property_type"],
                 construction_year=data["details"]["construction_year"],
-                parking_spaces=data["details"]["parking_spaces"],
                 heating_type=data["details"]["heating_type"],
             )
             db.session.add(details)
@@ -538,7 +525,7 @@ def delete_property(property_id):
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route("/user/<int:user_id>", methods=["GET"])
+@bp.route("/user/<uuid:user_id>", methods=["GET"])
 def get_user_properties(user_id):
     """Get all properties for a specific user."""
     try:
@@ -561,8 +548,11 @@ def get_user_properties(user_id):
                         "bathrooms": p.bathrooms,
                         "main_image_url": p.main_image_url,
                         "created_at": p.created_at.isoformat(),
-                        "owner_id": p.user_id,
+                        "owner_id": str(p.user_id),
                         "address": {
+                            "house_number": (
+                                p.address.house_number if p.address else None
+                            ),
                             "street": p.address.street if p.address else None,
                             "city": p.address.city if p.address else None,
                             "postcode": (

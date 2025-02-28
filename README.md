@@ -226,35 +226,32 @@ curl -X POST http://localhost:8000/api/properties \
 
 Example with images (multipart form data):
 ```bash
-curl -X POST http://localhost:8000/api/properties \
-  -H "Content-Type: application/json" \
+curl -X POST https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties \
   -F 'data={
     "price": 350000,
-    "user_id": 1,
+    "user_id": "3613c096-f41f-479f-a09f-7e0ab53b4eda",
     "address": {
-      "house_number": "123",
-      "street": "Sample Street",
+      "house_number": "180",
+      "street": "Queen's Gate",
       "city": "London",
-      "postcode": "SW1 1AA"
+      "postcode": "SW72AZ"
     },
     "specs": {
-      "bedrooms": 3,
-      "bathrooms": 2,
+      "bedrooms": 5,
+      "bathrooms": 3,
       "reception_rooms": 2,
-      "square_footage": 1200.5,
+      "square_footage": 2300,
       "property_type": "semi-detached",
-      "epc_rating": "B"
+      "epc_rating": "A"
     },
     "details": {
       "description": "Beautiful family home",
-      "property_type": "residential",
       "construction_year": 1990,
-      "parking_spaces": 2,
       "heating_type": "gas central"
     },
     "features": {
       "has_garden": true,
-      "garden_size": 100.5,
+      "garden_size": 100,
       "has_garage": true,
       "parking_spaces": 2
     }
@@ -471,3 +468,22 @@ curl http://localhost:8000/health
 ## Error Responses
 
 # No error responses currently documented
+
+## Azure Container App Configuration
+
+### Setting Environment Variables and Secrets
+
+1. Set basic environment variables:
+```bash
+az containerapp update -n maison-api -g maison-rg \
+  --set-env-vars \
+  DATABASE_URL="postgresql://maisondbadmin:password@maison-db.postgres.database.azure.com/property_db?sslmode=require" \
+  FLASK_APP="wsgi.py" \
+  FLASK_ENV="production"
+```
+
+2. Set the Azure Storage secret:
+```bash
+az containerapp secret set -n maison-api -g maison-rg \
+  --secrets azure-storage-connection="your-connection-string"
+```

@@ -1,5 +1,5 @@
 from app import create_app, db
-from app.models import User, Property, Address, PropertySpecs, PropertyMedia
+from app.models import User, Property, Address, PropertySpecs, PropertyMedia, PropertyDetail, PropertyFeatures
 from datetime import datetime, UTC
 from uuid import uuid4
 import random
@@ -23,11 +23,9 @@ def reset_database():
         print("Creating new tables...")
         db.create_all()
         
-        # Create test user
-        user = User(
-            email="test@maisonai.co.uk",
-            name="Test User"
-        )
+        # Create test user with UUID
+        user_id = uuid4()
+        user = User(id=user_id)  # Explicitly set UUID
         db.session.add(user)
         db.session.commit()
 
@@ -44,7 +42,7 @@ def reset_database():
                 price=350000 + (i * 50000),
                 bedrooms=3,
                 bathrooms=2,
-                user_id=user.id,
+                user_id=user_id,  # Use the UUID we created for the user
                 main_image_url=AZURE_IMAGE_URL,  # Set the main image URL
                 created_at=datetime.now(UTC)
             )
@@ -80,6 +78,25 @@ def reset_database():
                 epc_rating="B"
             )
             db.session.add(specs)
+
+            # When creating PropertyDetail objects, remove property_type and parking_spaces
+            details = PropertyDetail(
+                property_id=property_id,
+                description="A beautiful property...",
+                construction_year=2020,
+                heating_type="gas central"
+            )
+            db.session.add(details)
+
+            # Make sure parking_spaces is only set in PropertyFeatures
+            features = PropertyFeatures(
+                property_id=property_id,
+                has_garden=True,
+                garden_size=100.0,
+                parking_spaces=2,
+                has_garage=True
+            )
+            db.session.add(features)
 
         db.session.commit()
         print("Database reset complete!")

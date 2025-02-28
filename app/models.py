@@ -8,19 +8,6 @@ from sqlalchemy.types import TypeDecorator, CHAR
 import uuid
 
 
-@dataclass
-class User(db.Model):
-    __tablename__ = "users"
-
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String, unique=True, nullable=False)
-    name = db.Column(db.String)
-    created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.now(timezone.utc)
-    )
-    properties = relationship("Property", back_populates="owner")
-
-
 class GUID(TypeDecorator):
     """Platform-independent GUID type.
     Uses PostgreSQL's UUID type, otherwise uses CHAR(32), store as stringified
@@ -57,6 +44,14 @@ class GUID(TypeDecorator):
 
 
 @dataclass
+class User(db.Model):
+    __tablename__ = "users"
+
+    id = db.Column(GUID(), primary_key=True, default=uuid.uuid4)
+    properties = relationship("Property", back_populates="owner")
+
+
+@dataclass
 class Property(db.Model):
     __tablename__ = "properties"
     __allow_unmapped__ = True
@@ -66,7 +61,7 @@ class Property(db.Model):
     bedrooms = db.Column(db.Integer)
     bathrooms = db.Column(db.Float)
     main_image_url = db.Column(db.String)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_id = db.Column(GUID(), db.ForeignKey("users.id"), nullable=False)
     created_at = db.Column(
         db.DateTime(timezone=True), default=datetime.now(timezone.utc)
     )
@@ -118,9 +113,7 @@ class PropertyDetail(db.Model):
         GUID(), ForeignKey("properties.id", ondelete="CASCADE"), nullable=False
     )
     description = db.Column(db.String, nullable=True)
-    property_type = db.Column(db.String, nullable=True)
     construction_year = db.Column(db.Integer, nullable=True)
-    parking_spaces = db.Column(db.Integer, nullable=True)
     heating_type = db.Column(db.String, nullable=True)
 
     property = relationship("Property", back_populates="details")

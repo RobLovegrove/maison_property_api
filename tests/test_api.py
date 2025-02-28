@@ -1,7 +1,6 @@
 import pytest
 from app import create_app, db
-from uuid import UUID
-from datetime import datetime
+from uuid import UUID, uuid4
 from app.models import User
 import json
 from io import BytesIO
@@ -33,8 +32,8 @@ def client(app):
 def test_user(session):
     """Create a test user."""
     user = User(
-        email=f"test_{datetime.now().timestamp()}@example.com",
-        name="Test User",
+        id=uuid4(),  # Assuming you're using UUIDs
+        # Remove email and created_at fields
     )
     session.add(user)
     session.commit()
@@ -52,7 +51,7 @@ def create_test_property(client, test_user, session):
     """Helper function to create a test property"""
     data = {
         "price": 350000,
-        "user_id": test_user.id,
+        "user_id": str(test_user.id),  # Convert UUID to string
         "specs": {
             "bedrooms": 3,
             "bathrooms": 2,
@@ -75,7 +74,7 @@ def create_test_property(client, test_user, session):
     # Create the multipart form data
     form_data = MultiDict(
         [
-            ("data", json.dumps(data)),
+            ("data", json.dumps(data)),  # UUID is now a string
             ("main_image", (test_image, "test.jpg", "image/jpeg")),
         ]
     )

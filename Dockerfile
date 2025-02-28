@@ -26,11 +26,11 @@ ENV FLASK_APP=wsgi.py \
     AZURE_STORAGE_CONNECTION_STRING=""
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8080
 
 # Add healthcheck
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8080/health || exit 1
 
 # Run using gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "wsgi:app", "--log-level", "debug"] 
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "wsgi:app", "--log-level", "debug"] 

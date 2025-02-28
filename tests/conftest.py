@@ -10,6 +10,7 @@ from app.models import (
 from datetime import datetime, UTC
 from unittest.mock import patch
 from app.blob_storage import MockBlobStorageService
+from uuid import uuid4
 
 
 @pytest.fixture(scope="function")
@@ -66,13 +67,10 @@ def app_context(app):
 def test_user(session):
     """Create a test user."""
     user = User(
-        email=f"test_{datetime.now().timestamp()}@example.com",
-        name="Test User",
-        created_at=datetime.now(UTC),
+        id=uuid4(),  # Only include the ID field
     )
     session.add(user)
     session.commit()
-    session.refresh(user)  # Ensure we have the latest data
     return user
 
 
@@ -81,10 +79,11 @@ def init_database(app, session, test_user):
     """Initialize test database with sample data."""
     # Create test property with all related data
     property = Property(
+        id=uuid4(),  # Add explicit UUID
         price=350000,
         bedrooms=3,
         bathrooms=2.0,
-        user_id=test_user.id,
+        user_id=test_user.id,  # This is already a UUID
         main_image_url=(
             "https://maisonblobstorage.blob.core.windows.net/"
             "property-images/"

@@ -33,8 +33,8 @@ def create_app(config_name="development"):
     }
 
     # Initialize CORS only if CORS_RESOURCES is configured
-    if app.config.get("CORS_RESOURCES"):
-        CORS(app, resources=app.config["CORS_RESOURCES"])
+    # Allow all CORS requests for now
+    CORS(app, resources={r"/*": {"origins": "*"}})
 
     # Register blueprints
     from app.properties import bp as properties_bp
