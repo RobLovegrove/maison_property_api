@@ -1,10 +1,8 @@
 import pytest
 from app import create_app, db
 from uuid import UUID, uuid4
-from app.models import User
-import json
-from io import BytesIO
-from werkzeug.datastructures import MultiDict
+from app.models import User, UserRole
+from datetime import datetime
 
 
 @pytest.fixture
@@ -30,14 +28,26 @@ def client(app):
 
 @pytest.fixture(scope="function")
 def test_user(session):
-    """Create a test user."""
+    """Create a test user with buyer and seller roles."""
     user = User(
-        id=uuid4(),  # Assuming you're using UUIDs
-        # Remove email and created_at fields
+        id=uuid4(),
+        first_name="Test",
+        last_name="User",
+        email=f"test_{datetime.now().timestamp()}@example.com",
+        phone_number="+44123456789",
     )
     session.add(user)
     session.commit()
-    return session.get(User, user.id)  # Get fresh instance from session
+
+    # Add roles
+    roles = [
+        UserRole(user_id=user.id, role_type="buyer"),
+        UserRole(user_id=user.id, role_type="seller"),
+    ]
+    session.add_all(roles)
+    session.commit()
+
+    return user
 
 
 def test_health_check(client):
@@ -51,12 +61,12 @@ def create_test_property(client, test_user, session):
     """Helper function to create a test property"""
     data = {
         "price": 350000,
-        "user_id": str(test_user.id),  # Convert UUID to string
+        "seller_id": str(test_user.id),
         "specs": {
             "bedrooms": 3,
             "bathrooms": 2,
             "reception_rooms": 1,
-            "square_footage": 1200.0,
+            "square_footage": 1200.5,
             "property_type": "semi-detached",
             "epc_rating": "B",
         },
@@ -68,23 +78,13 @@ def create_test_property(client, test_user, session):
         },
     }
 
-    # Create a test image file
-    test_image = BytesIO(b"fake image data")
-
-    # Create the multipart form data
-    form_data = MultiDict(
-        [
-            ("data", json.dumps(data)),  # UUID is now a string
-            ("main_image", (test_image, "test.jpg", "image/jpeg")),
-        ]
-    )
-
     response = client.post(
-        "/api/properties", data=form_data, content_type="multipart/form-data"
+        "/api/properties",
+        json=data,
+        headers={"Content-Type": "application/json"},
     )
-
     assert response.status_code == 201
-    return response.json["id"]
+    return response.json["property_id"]
 
 
 def test_create_property(client, test_user, session):
@@ -117,6 +117,7 @@ def test_update_property(client, test_user, session):
 
     update_data = {
         "price": 375000,
+        "status": "under_offer",
         "specs": {
             "bedrooms": 4,
             "bathrooms": 2,
@@ -127,7 +128,11 @@ def test_update_property(client, test_user, session):
         },
     }
 
-    response = client.put(f"/api/properties/{property_id}", json=update_data)
+    response = client.put(
+        f"/api/properties/{property_id}",
+        json=update_data,
+        headers={"Content-Type": "application/json"},
+    )
     assert response.status_code == 200
 
 
@@ -154,3 +159,33 @@ def test_get_properties_list(client, test_user, session):
     response = client.get("/api/properties")
     assert response.status_code == 200
     assert len(response.json) >= 2
+
+
+def test_get_user_dashboard(client, test_user, session):
+    """Test getting a user's dashboard data after login"""
+    # First create some test properties owned by the user
+    property_id = create_test_property(client, test_user, session)
+
+    # Get the dashboard data
+    response = client.get(f"/api/users/{test_user.id}/dashboard")
+    assert response.status_code == 200
+
+    data = response.json
+    # Check basic user info
+    assert data["user"]["first_name"] == "Test"
+    assert data["user"]["last_name"] == "User"
+    assert data["user"]["email"]
+
+    # Check roles
+    assert len(data["roles"]) == 2
+    role_types = [role["role_type"] for role in data["roles"]]
+    assert "buyer" in role_types
+    assert "seller" in role_types
+
+    # Check properties (as seller)
+    assert len(data["listed_properties"]) == 1
+    assert data["listed_properties"][0]["property_id"] == property_id
+
+    # Check saved properties and negotiations
+    assert "saved_properties" in data
+    assert "negotiations_as_buyer" in data

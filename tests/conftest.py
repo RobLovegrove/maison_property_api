@@ -67,7 +67,11 @@ def app_context(app):
 def test_user(session):
     """Create a test user."""
     user = User(
-        id=uuid4(),  # Only include the ID field
+        id=uuid4(),
+        first_name="Test",
+        last_name="User",
+        email=f"test_{datetime.now().timestamp()}@example.com",
+        phone_number="+44123456789",
     )
     session.add(user)
     session.commit()

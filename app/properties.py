@@ -15,6 +15,8 @@ from app.exceptions import GeocodeError
 from uuid import uuid4
 from app.blob_storage import BlobStorageService
 import json
+from marshmallow import ValidationError
+from app.schemas import PropertyCreateSchema, PropertyUpdateSchema
 
 bp = Blueprint("properties", __name__)
 
@@ -32,7 +34,7 @@ def validate_property_data(data):
     errors = []
 
     # Validate required fields
-    required_fields = ["price", "user_id", "address", "specs"]
+    required_fields = ["price", "seller_id", "address", "specs"]
     for field in required_fields:
         if field not in data:
             errors.append(f"{field} is required")
@@ -90,6 +92,12 @@ def validate_property_data(data):
                 if "image_url" not in media_item:
                     errors.append(f"Media item {idx} missing image_url")
 
+    # Validate status if provided
+    if "status" in data and data["status"] not in Property.VALID_STATUSES:
+        errors.append(
+            f"Status must be one of: {', '.join(Property.VALID_STATUSES)}"
+        )
+
     return errors
 
 
@@ -101,7 +109,14 @@ def get_properties():
             joinedload(Property.address), joinedload(Property.specs)
         )
 
-        # Add filters if provided
+        # By default only show 'for_sale' properties unless include_all is True
+        include_all = (
+            request.args.get("include_all", "false").lower() == "true"
+        )
+        if not include_all:
+            query = query.where(Property.status == "for_sale")
+
+        # Add other filters if provided
         if request.args.get("min_price"):
             query = query.where(
                 Property.price >= int(request.args.get("min_price"))
@@ -119,6 +134,9 @@ def get_properties():
                 PropertySpecs.property_type
                 == request.args.get("property_type")
             )
+        # Add explicit status filter if provided
+        if request.args.get("status"):
+            query = query.where(Property.status == request.args.get("status"))
 
         query = query.order_by(Property.price.desc())
         properties = list(db.session.execute(query).unique().scalars())
@@ -126,13 +144,14 @@ def get_properties():
         return jsonify(
             [
                 {
-                    "id": str(p.id),
+                    "property_id": str(p.id),
                     "price": p.price,
                     "bedrooms": p.bedrooms,
                     "bathrooms": p.bathrooms,
                     "main_image_url": p.main_image_url,
                     "created_at": p.created_at.isoformat(),
-                    "owner_id": p.user_id,
+                    "seller_id": str(p.user_id),
+                    "status": p.status,
                     "address": {
                         "house_number": (
                             p.address.house_number if p.address else None
@@ -169,7 +188,7 @@ def get_property(property_id):
 
         return jsonify(
             {
-                "id": str(property_item.id),
+                "property_id": str(property_item.id),
                 "price": property_item.price,
                 "bedrooms": property_item.bedrooms,
                 "bathrooms": property_item.bathrooms,
@@ -227,7 +246,7 @@ def get_property(property_id):
                     ),
                     None,
                 ),
-                "owner_id": str(property_item.user_id),
+                "seller_id": str(property_item.user_id),
                 "address": {
                     "house_number": (
                         property_item.address.house_number
@@ -301,50 +320,58 @@ def get_property(property_id):
         return jsonify({"error": str(e)}), 500
 
 
+def preprocess_property_data(data):
+    """Convert string numbers to proper types"""
+    if "specs" in data:
+        specs = data["specs"]
+        if "square_footage" in specs:
+            try:
+                specs["square_footage"] = float(specs["square_footage"])
+            except (ValueError, TypeError):
+                pass  # Let schema validation handle invalid values
+        if "bedrooms" in specs:
+            try:
+                specs["bedrooms"] = int(specs["bedrooms"])
+            except (ValueError, TypeError):
+                pass
+        if "bathrooms" in specs:
+            try:
+                specs["bathrooms"] = int(specs["bathrooms"])
+            except (ValueError, TypeError):
+                pass
+    return data
+
+
 @bp.route("", methods=["POST"])
 def create_property():
-    """Create a new property."""
+    """Create a new property listing."""
     try:
-        # Initialize blob storage service
-        blob_service = BlobStorageService()
+        data = preprocess_property_data(request.get_json())
+        schema = PropertyCreateSchema()
+        try:
+            # Validate the data using schema
+            validated_data = schema.load(data)
+            # Use the validated data instead of raw data
+            data = validated_data
+        except ValidationError as err:
+            return (
+                jsonify(
+                    {"error": "Validation failed", "details": err.messages}
+                ),
+                400,
+            )
+
         warnings = []
         image_urls = []
 
-        # Handle multipart form data with JSON
-        if request.files:
+        # Handle multipart form data with images
+        if request.content_type and request.content_type.startswith(
+            "multipart/form-data"
+        ):
+            # ... existing image handling code ...
+
             try:
-                # Parse JSON data from form field
                 data = json.loads(request.form.get("data", "{}"))
-                files = request.files
-
-                # Handle main image upload
-                if "main_image" in files:
-                    main_image = files["main_image"]
-                    if main_image and allowed_file(main_image.filename):
-                        try:
-                            main_image_url = blob_service.upload_image(
-                                main_image.read(), main_image.content_type
-                            )
-                            image_urls.append(main_image_url)
-                        except Exception as e:
-                            warnings.append(
-                                f"Failed to upload main image: {str(e)}"
-                            )
-
-                # Handle additional images
-                if "additional_images" in files:
-                    for image in files.getlist("additional_images"):
-                        if image and allowed_file(image.filename):
-                            try:
-                                image_url = blob_service.upload_image(
-                                    image.read(), image.content_type
-                                )
-                                image_urls.append(image_url)
-                            except Exception as e:
-                                warnings.append(
-                                    f"Failed to upload additional "
-                                    f"image: {str(e)}"
-                                )
             except json.JSONDecodeError:
                 return (
                     jsonify(
@@ -363,15 +390,16 @@ def create_property():
 
         property_id = uuid4()
 
-        # Create property with main image
+        # Create property with main image and default status
         property = Property(
             id=property_id,
             price=int(data["price"]),
             bedrooms=int(data["specs"]["bedrooms"]),
             bathrooms=float(data["specs"]["bathrooms"]),
             main_image_url=image_urls[0] if image_urls else None,
-            user_id=data["user_id"],
+            user_id=data["seller_id"],
             created_at=datetime.now(UTC),
+            status=data.get("status", "for_sale"),
         )
         db.session.add(property)
 
@@ -444,7 +472,7 @@ def create_property():
         return (
             jsonify(
                 {
-                    "id": str(property_id),
+                    "property_id": str(property_id),
                     "message": "Property created successfully",
                     "warnings": warnings,
                     "image_urls": image_urls,
@@ -456,7 +484,10 @@ def create_property():
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error creating property: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return (
+            jsonify({"error": "Failed to create property", "details": str(e)}),
+            500,
+        )
 
 
 def allowed_file(filename):
@@ -476,28 +507,75 @@ def update_property(property_id):
         if property_item is None:
             return jsonify({"error": "Property not found"}), 404
 
-        data = request.get_json()
+        # Load and validate data
+        try:
+            schema = PropertyUpdateSchema()
+            validated_data = schema.load(request.get_json())
+        except ValidationError as err:
+            current_app.logger.error(f"Validation error: {err.messages}")
+            return (
+                jsonify(
+                    {"error": "Validation failed", "details": err.messages}
+                ),
+                400,
+            )
+
+        # Check status transition if status is being updated
+        if "status" in validated_data:
+            current_status = property_item.status
+            new_status = validated_data["status"]
+
+            # Define valid transitions
+            valid_transitions = {
+                "for_sale": ["under_offer", "sold"],
+                "under_offer": ["for_sale", "sold"],
+                "sold": [],  # Can't transition from sold
+            }
+
+            if current_status == "sold":
+                return (
+                    jsonify(
+                        {"error": "Cannot update status of sold property"}
+                    ),
+                    400,
+                )
+
+            if new_status not in valid_transitions[current_status]:
+                return (
+                    jsonify(
+                        {
+                            "error": (
+                                "Invalid status transition from",
+                                f"{current_status} to {new_status}",
+                            )
+                        }
+                    ),
+                    400,
+                )
 
         # Update main property fields
-        for key, value in data.items():
-            if key not in ("address", "specs", "features", "details", "media"):
-                setattr(property_item, key, value)
+        if "price" in validated_data:
+            property_item.price = validated_data["price"]
+        if "status" in validated_data:
+            property_item.status = validated_data["status"]
 
-        # Update related objects
-        if "address" in data and property_item.address:
-            for key, value in data["address"].items():
-                setattr(property_item.address, key, value)
-
-        if "specs" in data and property_item.specs:
-            for key, value in data["specs"].items():
+        # Update specs if provided
+        if "specs" in validated_data and property_item.specs:
+            for key, value in validated_data["specs"].items():
                 setattr(property_item.specs, key, value)
 
         db.session.commit()
-        return jsonify({"message": "Property updated successfully"})
+        return jsonify(
+            {
+                "message": "Property updated successfully",
+                "status": property_item.status,
+            }
+        )
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.error(f"Error updating property: {str(e)}")
+        return jsonify({"error": "Failed to update property"}), 500
 
 
 @bp.route("/<uuid:property_id>", methods=["DELETE"])
@@ -538,40 +616,35 @@ def get_user_properties(user_id):
 
         properties = list(db.session.execute(query).unique().scalars())
 
-        return (
-            jsonify(
-                [
-                    {
-                        "id": str(p.id),
-                        "price": p.price,
-                        "bedrooms": p.bedrooms,
-                        "bathrooms": p.bathrooms,
-                        "main_image_url": p.main_image_url,
-                        "created_at": p.created_at.isoformat(),
-                        "owner_id": str(p.user_id),
-                        "address": {
-                            "house_number": (
-                                p.address.house_number if p.address else None
-                            ),
-                            "street": p.address.street if p.address else None,
-                            "city": p.address.city if p.address else None,
-                            "postcode": (
-                                p.address.postcode if p.address else None
-                            ),
-                        },
-                        "specs": {
-                            "property_type": (
-                                p.specs.property_type if p.specs else None
-                            ),
-                            "square_footage": (
-                                p.specs.square_footage if p.specs else None
-                            ),
-                        },
-                    }
-                    for p in properties
-                ]
-            ),
-            200,
+        return jsonify(
+            [
+                {
+                    "property_id": str(p.id),
+                    "price": p.price,
+                    "bedrooms": p.bedrooms,
+                    "bathrooms": p.bathrooms,
+                    "main_image_url": p.main_image_url,
+                    "created_at": p.created_at.isoformat(),
+                    "seller_id": str(p.user_id),
+                    "address": {
+                        "house_number": (
+                            p.address.house_number if p.address else None
+                        ),
+                        "street": p.address.street if p.address else None,
+                        "city": p.address.city if p.address else None,
+                        "postcode": p.address.postcode if p.address else None,
+                    },
+                    "specs": {
+                        "property_type": (
+                            p.specs.property_type if p.specs else None
+                        ),
+                        "square_footage": (
+                            p.specs.square_footage if p.specs else None
+                        ),
+                    },
+                }
+                for p in properties
+            ]
         )
 
     except Exception as e:

@@ -26,6 +26,15 @@ def create_app(config_name="development"):
     # Initialize extensions with app
     db.init_app(app)
 
+    # Initialize cache with app
+    cache.init_app(
+        app,
+        config={
+            "CACHE_TYPE": "SimpleCache",  # Use simple cache for development
+            "CACHE_DEFAULT_TIMEOUT": 300,
+        },
+    )
+
     # Add SQLAlchemy configuration
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
         "pool_pre_ping": True,  # Enable connection health checks
@@ -37,9 +46,10 @@ def create_app(config_name="development"):
     CORS(app, resources={r"/*": {"origins": "*"}})
 
     # Register blueprints
-    from app.properties import bp as properties_bp
+    from app import properties, users
 
-    app.register_blueprint(properties_bp, url_prefix="/api/properties")
+    app.register_blueprint(properties.bp, url_prefix="/api/properties")
+    app.register_blueprint(users.bp, url_prefix="/api/users")
 
     from app.main import bp as main_bp
 
