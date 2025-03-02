@@ -609,6 +609,7 @@ Error Responses:
 Create a new user account
 
 Required fields:
+- user_id (UUID): User's Firebase UUID
 - first_name (string): User's first name
 - last_name (string): User's last name
 - email (string): User's email address
@@ -622,6 +623,7 @@ Example:
 curl -X POST http://localhost:8080/api/users \
   -H "Content-Type: application/json" \
   -d '{
+    "user_id": "bd70f994-5834-45b9-a6f0-8731e51ff0e6",
     "first_name": "John",
     "last_name": "Smith",
     "email": "john.smith@example.com",

@@ -243,6 +243,7 @@ class UserCreateSchema(Schema):
     class Meta:
         unknown = EXCLUDE
 
+    user_id = fields.UUID(required=True)
     first_name = fields.Str(
         required=True, validate=validate.Length(min=1, max=50)
     )

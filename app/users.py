@@ -21,7 +21,7 @@ bp = Blueprint("users", __name__)
 
 @bp.route("", methods=["POST"])
 def create_user():
-    """Create a new user with roles."""
+    """Create a new user with roles using provided Firebase UUID."""
     try:
         schema = UserCreateSchema()
         data = schema.load(request.get_json())
@@ -30,8 +30,13 @@ def create_user():
         if User.query.filter_by(email=data["email"]).first():
             return jsonify({"error": "Email already registered"}), 400
 
-        # Create user
+        # Check if user_id was provided
+        if "user_id" not in data:
+            return jsonify({"error": "user_id is required"}), 400
+
+        # Create user with provided UUID
         user = User(
+            id=data["user_id"],  # Use the Firebase UUID
             first_name=data["first_name"],
             last_name=data["last_name"],
             email=data["email"],
