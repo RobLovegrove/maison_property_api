@@ -668,6 +668,81 @@ Error Responses:
 }
 ```
 
+### Offer Management
+
+#### PUT /api/users/{user_id}/offers/{negotiation_id}
+Update an offer's status (accept/reject/cancel)
+
+Required fields:
+- action (string): Must be one of: "accept", "reject", "cancel"
+
+Rules:
+- Only the buyer or seller involved in the negotiation can update its status
+- Can only accept/reject offers made by the other party
+- Can only cancel your own most recent offer
+- If buyer cancels their first offer, the entire negotiation is cancelled
+- If cancelling a counter-offer, reverts to the previous offer from the other party
+
+Examples:
+```bash
+# Accept an offer
+curl -X PUT http://localhost:8000/api/users/seller_id/offers/negotiation_id \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "accept"
+  }'
+
+# Reject an offer
+curl -X PUT http://localhost:8000/api/users/seller_id/offers/negotiation_id \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "reject"
+  }'
+
+# Cancel your offer/counter-offer
+curl -X PUT http://localhost:8000/api/users/user_id/offers/negotiation_id \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "cancel"
+  }'
+```
+
+Response:
+```json
+{
+  "message": "Counter-offer cancelled, reverted to previous offer",
+  "negotiation": {
+    "negotiation_id": "123e4567-e89b-12d3-a456-426614174000",
+    "property_id": "123e4567-e89b-12d3-a456-426614174001",
+    "buyer_id": "123e4567-e89b-12d3-a456-426614174002",
+    "seller_id": "123e4567-e89b-12d3-a456-426614174003",
+    "current_offer_amount": 350000,
+    "status": "active",
+    "updated_at": "2024-02-22T12:00:00Z",
+    "action_by": "123e4567-e89b-12d3-a456-426614174002",
+    "property_status": "for_sale",
+    "last_offer_by": "123e4567-e89b-12d3-a456-426614174002"
+  }
+}
+```
+
+Error Responses:
+```json
+{
+  "error": "Cannot accept/reject your own offer. Waiting for buyer response"
+}
+```
+```json
+{
+  "error": "Can only cancel your own most recent offer"
+}
+```
+```json
+{
+  "error": "Cannot update: negotiation is already accepted"
+}
+```
+
 ## Query Parameters
 
 | Parameter | Type | Description | Example |

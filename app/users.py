@@ -15,6 +15,7 @@ from app.schemas import (
     UserDashboardSchema,
 )
 from marshmallow import ValidationError
+from datetime import datetime, timezone
 
 bp = Blueprint("users", __name__)
 
@@ -593,3 +594,201 @@ def create_offer(user_id):
         db.session.rollback()
         current_app.logger.error(f"Error creating offer: {str(e)}")
         return jsonify({"error": "Failed to create offer"}), 500
+
+
+@bp.route("/<uuid:user_id>/offers/<uuid:negotiation_id>", methods=["PUT"])
+def update_offer_status(user_id, negotiation_id):
+    """Update an offer's status (accept/reject/cancel)"""
+    try:
+        # Get the negotiation
+        negotiation = PropertyNegotiation.query.get_or_404(negotiation_id)
+        property_item = Property.query.get(negotiation.property_id)
+
+        # Verify user is involved in this negotiation
+        if str(user_id) != str(property_item.user_id) and str(user_id) != str(
+            negotiation.buyer_id
+        ):
+            return (
+                jsonify(
+                    {
+                        "error": (
+                            "Only the buyer or seller "
+                            "can update offer status"
+                        )
+                    }
+                ),
+                403,
+            )
+
+        data = request.get_json()
+        if not data or "action" not in data:
+            return jsonify({"error": "action field is required"}), 400
+
+        action = data["action"]
+        if action not in ["accept", "reject", "cancel"]:
+            return (
+                jsonify(
+                    {"error": "action must be 'accept', 'reject', or 'cancel'"}
+                ),
+                400,
+            )
+
+        # Get the latest offer
+        latest_offer = (
+            OfferTransaction.query.filter_by(negotiation_id=negotiation_id)
+            .order_by(OfferTransaction.created_at.desc())
+            .first()
+        )
+
+        # Check if negotiation is already completed
+        if negotiation.status in ["accepted", "rejected", "cancelled"]:
+            return (
+                jsonify(
+                    {
+                        "error": (
+                            f"Cannot update: negotiation is already "
+                            f"{negotiation.status}"
+                        )
+                    }
+                ),
+                400,
+            )
+
+        # Verify the right person is taking action based on last offer
+        is_seller = str(user_id) == str(property_item.user_id)
+        last_offer_by_seller = str(latest_offer.made_by) == str(
+            property_item.user_id
+        )
+
+        if action in ["accept", "reject"]:
+            # Can only accept/reject if the other party made the last offer
+            if is_seller == last_offer_by_seller:
+                action_type = (
+                    "accept/reject" if action == "accept" else "reject"
+                )
+                by_role = "seller" if is_seller else "buyer"
+                return (
+                    jsonify(
+                        {
+                            "error": (
+                                f"Cannot {action_type} your own offer. "
+                                f"Waiting for {by_role} response"
+                            )
+                        }
+                    ),
+                    400,
+                )
+
+        # Handle different actions
+        if action == "accept":
+            negotiation.status = "accepted"
+            property_item.status = "under_offer"
+
+            # Record who accepted the offer
+            negotiation.accepted_by = user_id
+            negotiation.accepted_at = datetime.now(timezone.utc)
+
+        elif action == "reject":
+            negotiation.status = "rejected"
+            negotiation.rejected_by = user_id
+            negotiation.rejected_at = datetime.now(timezone.utc)
+
+        else:  # cancel
+            # Get all offers in chronological order
+            all_offers = (
+                OfferTransaction.query.filter_by(negotiation_id=negotiation_id)
+                .order_by(OfferTransaction.created_at.asc())
+                .all()
+            )
+
+            # Can only cancel your own most recent offer
+            if not (is_seller == last_offer_by_seller):
+                return (
+                    jsonify(
+                        {
+                            "error": (
+                                "Can only cancel your own most recent offer"
+                            )
+                        }
+                    ),
+                    400,
+                )
+
+            # Check if this is the first offer in the negotiation
+            is_first_offer = latest_offer == all_offers[0]
+
+            if is_first_offer and not is_seller:
+                # If buyer cancels their first offer, cancel entire negotiation
+                negotiation.status = "cancelled"
+                negotiation.cancelled_at = datetime.now(timezone.utc)
+
+                # If property was under offer due to this negotiation revert it
+                if (
+                    property_item.status == "under_offer"
+                    and not PropertyNegotiation.query.filter(
+                        PropertyNegotiation.property_id == property_item.id,
+                        PropertyNegotiation.id != negotiation_id,
+                        PropertyNegotiation.status == "accepted",
+                    ).first()
+                ):
+                    property_item.status = "for_sale"
+            else:
+                """For all other cases (seller cancelling counter-offer
+                or buyer cancelling counter-offer),
+                revert to the previous offer from the other party"""
+                previous_offers = [
+                    o
+                    for o in all_offers
+                    if str(o.made_by)
+                    == (
+                        str(negotiation.buyer_id)
+                        if is_seller
+                        else str(property_item.user_id)
+                    )
+                ]
+
+                if previous_offers:
+                    # Set the last offer from the other party as current offer
+                    last_other_offer = previous_offers[-1]
+                    negotiation.last_offer_by = last_other_offer.made_by
+                    negotiation.status = "active"
+                else:
+                    # This shouldn't happen, but handle it just in case
+                    negotiation.status = "cancelled"
+                    negotiation.cancelled_at = datetime.now(timezone.utc)
+
+        db.session.commit()
+
+        # Get the current active offer for the response
+        current_offer = (
+            OfferTransaction.query.filter_by(negotiation_id=negotiation_id)
+            .order_by(OfferTransaction.created_at.desc())
+            .first()
+        )
+
+        return jsonify(
+            {
+                "message": (
+                    "Negotiation cancelled"
+                    if negotiation.status == "cancelled"
+                    else "Counter-offer cancelled, reverted to previous offer"
+                ),
+                "negotiation": {
+                    "negotiation_id": str(negotiation.id),
+                    "property_id": str(property_item.id),
+                    "buyer_id": str(negotiation.buyer_id),
+                    "seller_id": str(property_item.user_id),
+                    "current_offer_amount": current_offer.offer_amount,
+                    "status": negotiation.status,
+                    "updated_at": negotiation.updated_at.isoformat(),
+                    "action_by": str(user_id),
+                    "property_status": property_item.status,
+                    "last_offer_by": str(current_offer.made_by),
+                },
+            }
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating offer status: {str(e)}")
+        return jsonify({"error": "Failed to update offer status"}), 500

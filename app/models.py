@@ -334,6 +334,13 @@ class PropertyNegotiation(db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
+    # Add new fields for tracking actions
+    accepted_by = db.Column(GUID(), ForeignKey("users.id"), nullable=True)
+    accepted_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    rejected_by = db.Column(GUID(), ForeignKey("users.id"), nullable=True)
+    rejected_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    cancelled_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
     # Relationships - specify foreign_keys explicitly
     property = relationship("Property", back_populates="negotiations")
     buyer = relationship(
@@ -346,7 +353,15 @@ class PropertyNegotiation(db.Model):
         order_by="OfferTransaction.created_at",
     )
 
-    VALID_STATUSES = ["active", "accepted", "rejected", "withdrawn", "expired"]
+    # Update valid statuses
+    VALID_STATUSES = [
+        "active",
+        "accepted",
+        "rejected",
+        "cancelled",
+        "withdrawn",
+        "expired",
+    ]
 
     __table_args__ = (
         db.CheckConstraint(
