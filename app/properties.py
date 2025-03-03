@@ -17,6 +17,7 @@ from app.blob_storage import BlobStorageService
 import json
 from marshmallow import ValidationError
 from app.schemas import PropertyCreateSchema, PropertyUpdateSchema
+from app.image_validation import validate_image
 
 bp = Blueprint("properties", __name__)
 
@@ -341,21 +342,6 @@ def preprocess_property_data(data):
 def create_property():
     """Create a new property listing."""
     try:
-        data = preprocess_property_data(request.get_json())
-        schema = PropertyCreateSchema()
-        try:
-            # Validate the data using schema
-            validated_data = schema.load(data)
-            # Use the validated data instead of raw data
-            data = validated_data
-        except ValidationError as err:
-            return (
-                jsonify(
-                    {"error": "Validation failed", "details": err.messages}
-                ),
-                400,
-            )
-
         warnings = []
         image_urls = []
 
@@ -363,7 +349,59 @@ def create_property():
         if request.content_type and request.content_type.startswith(
             "multipart/form-data"
         ):
-            # ... existing image handling code ...
+            files = []
+            # Handle main image
+            if "main_image" in request.files:
+                files.append(request.files["main_image"])
+
+            # Handle additional images
+            additional_images = request.files.getlist("additional_image")
+            files.extend(additional_images)
+
+            # Initialize blob service
+            try:
+                blob_service = BlobStorageService()
+            except Exception as e:
+                current_app.logger.error(
+                    f"Failed to initialize blob service: {str(e)}"
+                )
+                return (
+                    jsonify({"error": "Failed to initialize storage service"}),
+                    500,
+                )
+
+            for file in files:
+                if file and allowed_file(file.filename):
+                    # Read the file data
+                    image_data = file.read()
+
+                    # Validate image
+                    is_valid, error_message = validate_image(image_data)
+                    if not is_valid:
+                        warnings.append(
+                            f"Skipped image {file.filename}: {error_message}"
+                        )
+                        continue
+
+                    try:
+                        # Upload to blob storage
+                        current_app.logger.debug(
+                            f"Uploading file: {file.filename}"
+                        )
+                        image_url = blob_service.upload_image(
+                            image_data, file.content_type
+                        )
+                        current_app.logger.debug(
+                            f"Upload successful, URL: {image_url}"
+                        )
+                        image_urls.append(image_url)
+                    except Exception as e:
+                        current_app.logger.error(f"Upload failed: {str(e)}")
+                        warnings.append(
+                            f"Failed to upload {file.filename}: {str(e)}"
+                        )
+                else:
+                    warnings.append(f"Skipped invalid file: {file.filename}")
 
             try:
                 data = json.loads(request.form.get("data", "{}"))
@@ -374,11 +412,27 @@ def create_property():
                     ),
                     400,
                 )
+
         else:
             # Handle pure JSON request
             data = request.get_json()
 
-        # Validate data
+        # Preprocess data before schema validation
+        data = preprocess_property_data(data)
+
+        schema = PropertyCreateSchema()
+        try:
+            validated_data = schema.load(data)
+            data = validated_data
+        except ValidationError as err:
+            return (
+                jsonify(
+                    {"error": "Validation failed", "details": err.messages}
+                ),
+                400,
+            )
+
+        # Additional property-specific validation
         errors = validate_property_data(data)
         if errors:
             return jsonify({"errors": errors}), 400
@@ -487,7 +541,7 @@ def create_property():
 
 def allowed_file(filename):
     """Check if file type is allowed"""
-    ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
+    ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
     return (
         "." in filename
         and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS

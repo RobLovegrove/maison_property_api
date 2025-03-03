@@ -158,24 +158,11 @@ def init_database(app, session, test_user):
 
 
 @pytest.fixture
-def sample_property(test_user):
-    """Sample property data for tests."""
+def test_property_data(test_user):
+    """Valid property data for tests."""
     return {
         "price": 350000,
-        "user_id": test_user.id,
-        "bedrooms": 3,
-        "bathrooms": 2,
-        "main_image_url": (
-            "https://maisonblobstorage.blob.core.windows.net/"
-            "property-images/"
-            "0dcb7f22-2216-42b5-adec-8ccbd3718474.jpg"
-        ),
-        "address": {
-            "house_number": "123",
-            "street": "Test Street",
-            "city": "London",
-            "postcode": "SW1 1AA",
-        },
+        "seller_id": str(test_user.id),  # Changed from user_id to seller_id
         "specs": {
             "bedrooms": 3,
             "bathrooms": 2,
@@ -184,19 +171,13 @@ def sample_property(test_user):
             "property_type": "semi-detached",
             "epc_rating": "B",
         },
-        "features": {
-            "has_garden": True,
-            "garden_size": 100.0,
-            "parking_spaces": 2,
-            "has_garage": True,
+        "address": {
+            "house_number": "123",
+            "street": "Test Street",
+            "city": "London",
+            "postcode": "SW1 1AA",
         },
-        "details": {
-            "description": "A lovely property",
-            "property_type": "semi-detached",
-            "construction_year": 1990,
-            "parking_spaces": 2,
-            "heating_type": "Gas Central",
-        },
+        "status": "for_sale",
     }
 
 

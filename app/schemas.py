@@ -322,18 +322,17 @@ class PropertyCreateSchema(Schema):
         unknown = EXCLUDE
 
     price = fields.Int(required=True, validate=validate.Range(min=0))
-    main_image_url = fields.URL(allow_none=True)
+    seller_id = fields.UUID(required=True)
     address = fields.Nested(AddressSchema, required=True)
     specs = fields.Nested(PropertySpecsSchema, required=True)
     features = fields.Nested(PropertyFeaturesSchema, required=False)
     details = fields.Nested(PropertyDetailsSchema, required=False)
     media = fields.List(fields.Nested(PropertyMediaSchema), required=False)
-    seller_id = fields.UUID(required=True, attribute="user_id")
     status = fields.String(
         validate=validate.OneOf(Property.VALID_STATUSES),
         required=False,
-        default="for_sale",
-        description="Property status (defaults to 'for_sale')",
+        dump_default="for_sale",
+        metadata={"description": "Property status (defaults to 'for_sale')"},
     )
 
 

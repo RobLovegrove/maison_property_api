@@ -66,7 +66,7 @@ def create_test_property(client, test_user, session):
             "bedrooms": 3,
             "bathrooms": 2,
             "reception_rooms": 1,
-            "square_footage": 1200.5,
+            "square_footage": 1200.0,
             "property_type": "semi-detached",
             "epc_rating": "B",
         },
@@ -76,6 +76,7 @@ def create_test_property(client, test_user, session):
             "city": "London",
             "postcode": "SW1 1AA",
         },
+        "status": "for_sale",
     }
 
     response = client.post(
