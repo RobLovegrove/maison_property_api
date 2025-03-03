@@ -710,13 +710,13 @@ Optional fields:
 
 Example:
 ```bash
-curl -X POST http://localhost:8080/api/users \
+  curl -X POST https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "bd70f994-5834-45b9-a6f0-8731e51ff0e6",
-    "first_name": "John",
-    "last_name": "Smith",
-    "email": "john.smith@example.com",
+    "user_id": "RY34xpmeKTWHXstoZKdX4JrKchL2",
+    "first_name": "Teej",
+    "last_name": "Amosu",
+    "email": "Teej@maisonai.co.uk",
     "phone_number": "07700900000",
     "roles": [
       {"role_type": "buyer"},

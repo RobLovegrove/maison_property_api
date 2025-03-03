@@ -5,6 +5,7 @@ from app.models import (
     Address,
     PropertySpecs,
     PropertyMedia,
+    User,
 )
 from datetime import datetime, UTC
 from sqlalchemy.sql import select
@@ -98,6 +99,12 @@ def validate_property_data(data):
         errors.append(
             f"Status must be one of: {', '.join(Property.VALID_STATUSES)}"
         )
+
+    # Example validation for seller_id
+    if "seller_id" not in data:
+        errors.append("seller_id is required")
+    elif not isinstance(data["seller_id"], str):  # Changed from UUID check
+        errors.append("seller_id must be a valid Firebase UID")
 
     return errors
 
@@ -652,52 +659,30 @@ def delete_property(property_id):
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route("/user/<uuid:user_id>", methods=["GET"])
+@bp.route("/user/<string:user_id>", methods=["GET"])
 def get_user_properties(user_id):
     """Get all properties for a specific user."""
-    try:
-        query = (
-            select(Property)
-            .options(joinedload(Property.address), joinedload(Property.specs))
-            .where(Property.seller_id == user_id)
-            .order_by(Property.price.desc())
-        )
+    # First check if user exists
+    _ = User.query.get_or_404(user_id)
 
-        properties = list(db.session.execute(query).unique().scalars())
+    # Get all properties where the user is the seller
+    properties = Property.query.filter_by(seller_id=user_id).all()
 
-        return jsonify(
-            [
-                {
-                    "property_id": str(p.id),
-                    "price": p.price,
-                    "bedrooms": p.bedrooms,
-                    "bathrooms": p.bathrooms,
-                    "main_image_url": p.main_image_url,
-                    "created_at": p.created_at.isoformat(),
-                    "seller_id": str(p.seller_id),
-                    "address": {
-                        "house_number": (
-                            p.address.house_number if p.address else None
-                        ),
-                        "street": p.address.street if p.address else None,
-                        "city": p.address.city if p.address else None,
-                        "postcode": p.address.postcode if p.address else None,
-                    },
-                    "specs": {
-                        "property_type": (
-                            p.specs.property_type if p.specs else None
-                        ),
-                        "square_footage": (
-                            p.specs.square_footage if p.specs else None
-                        ),
-                    },
-                }
-                for p in properties
-            ]
-        )
+    # Convert to dict for JSON response
+    properties_list = []
+    for prop in properties:
+        prop_dict = {
+            "id": str(prop.id),
+            "price": prop.price,
+            "seller_id": prop.seller_id,
+            "status": prop.status,
+            "created_at": (
+                prop.created_at.isoformat() if prop.created_at else None
+            ),
+        }
+        properties_list.append(prop_dict)
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify(properties_list)
 
 
 @bp.route("/test-upload", methods=["POST"])

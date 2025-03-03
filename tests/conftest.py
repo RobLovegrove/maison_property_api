@@ -65,9 +65,9 @@ def app_context(app):
 
 @pytest.fixture(scope="function")
 def test_user(session):
-    """Create a test user."""
+    """Create a test user with buyer and seller roles."""
     user = User(
-        id=uuid4(),
+        id="test-user-id",  # Changed from uuid4() to string ID
         first_name="Test",
         last_name="User",
         email=f"test_{datetime.now().timestamp()}@example.com",

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from sqlalchemy.orm import Mapped, relationship
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.types import TypeDecorator, CHAR
 import uuid
 
@@ -47,7 +47,7 @@ class GUID(TypeDecorator):
 class User(db.Model):
     __tablename__ = "users"
 
-    id = db.Column(GUID(), primary_key=True, default=uuid.uuid4)
+    id = db.Column(String(128), primary_key=True)
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -79,8 +79,8 @@ class User(db.Model):
 class UserRole(db.Model):
     __tablename__ = "user_roles"
 
-    id = db.Column(GUID(), primary_key=True, default=uuid.uuid4)
-    user_id = db.Column(GUID(), ForeignKey("users.id"), nullable=False)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = db.Column(String(128), ForeignKey("users.id"), nullable=False)
     role_type = db.Column(db.String(10), nullable=False)
     created_at = db.Column(
         db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
@@ -102,12 +102,14 @@ class Property(db.Model):
 
     VALID_STATUSES = ["for_sale", "under_offer", "sold"]
 
-    id = db.Column(GUID(), primary_key=True, default=uuid.uuid4)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     price = db.Column(db.Integer, nullable=False)
     bedrooms = db.Column(db.Integer)
     bathrooms = db.Column(db.Float)
     main_image_url = db.Column(db.String(500))
-    seller_id = db.Column(GUID(), ForeignKey("users.id"), nullable=False)
+    seller_id = db.Column(
+        String(128), db.ForeignKey("users.id"), nullable=False
+    )
     created_at = db.Column(
         db.DateTime(timezone=True), default=datetime.now(timezone.utc)
     )
@@ -262,11 +264,11 @@ class PropertyMedia(db.Model):
 class PropertyOffer(db.Model):
     __tablename__ = "property_offers"
 
-    id = db.Column(GUID(), primary_key=True, default=uuid.uuid4)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     property_id = db.Column(
-        GUID(), ForeignKey("properties.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("properties.id"), nullable=False
     )
-    buyer_id = db.Column(GUID(), ForeignKey("users.id"), nullable=False)
+    buyer_id = db.Column(String(128), ForeignKey("users.id"), nullable=False)
     offer_amount = db.Column(db.Integer, nullable=False)
     status = db.Column(db.String(20), nullable=False, default="pending")
     counter_offer_amount = db.Column(db.Integer)
@@ -293,11 +295,11 @@ class PropertyOffer(db.Model):
 class SavedProperty(db.Model):
     __tablename__ = "saved_properties"
 
-    id = db.Column(GUID(), primary_key=True, default=uuid.uuid4)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     property_id = db.Column(
-        GUID(), ForeignKey("properties.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("properties.id"), nullable=False
     )
-    user_id = db.Column(GUID(), ForeignKey("users.id"), nullable=False)
+    user_id = db.Column(String(128), ForeignKey("users.id"), nullable=False)
     notes = db.Column(db.Text)
     created_at = db.Column(
         db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
@@ -318,13 +320,13 @@ class PropertyNegotiation(db.Model):
 
     __tablename__ = "property_negotiations"
 
-    id = db.Column(GUID(), primary_key=True, default=uuid.uuid4)
-    property_id = db.Column(
-        GUID(), ForeignKey("properties.id"), nullable=False
-    )
-    buyer_id = db.Column(GUID(), ForeignKey("users.id"), nullable=False)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    property_id = db.Column(UUID(as_uuid=True), db.ForeignKey("properties.id"))
+    buyer_id = db.Column(String(128), db.ForeignKey("users.id"))
     status = db.Column(db.String(20), nullable=False, default="active")
-    last_offer_by = db.Column(GUID(), ForeignKey("users.id"), nullable=True)
+    last_offer_by = db.Column(
+        String(128), ForeignKey("users.id"), nullable=True
+    )
     created_at = db.Column(
         db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -335,9 +337,9 @@ class PropertyNegotiation(db.Model):
     )
 
     # Add new fields for tracking actions
-    accepted_by = db.Column(GUID(), ForeignKey("users.id"), nullable=True)
+    accepted_by = db.Column(String(128), ForeignKey("users.id"), nullable=True)
     accepted_at = db.Column(db.DateTime(timezone=True), nullable=True)
-    rejected_by = db.Column(GUID(), ForeignKey("users.id"), nullable=True)
+    rejected_by = db.Column(String(128), ForeignKey("users.id"), nullable=True)
     rejected_at = db.Column(db.DateTime(timezone=True), nullable=True)
     cancelled_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
@@ -376,14 +378,14 @@ class OfferTransaction(db.Model):
 
     __tablename__ = "offer_transactions"
 
-    id = db.Column(GUID(), primary_key=True, default=uuid.uuid4)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     negotiation_id = db.Column(
-        GUID(), ForeignKey("property_negotiations.id"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("property_negotiations.id"),
+        nullable=False,
     )
     offer_amount = db.Column(db.Integer, nullable=False)
-    made_by = db.Column(
-        GUID(), ForeignKey("users.id"), nullable=False
-    )  # Could be buyer or seller
+    made_by = db.Column(String(128), ForeignKey("users.id"), nullable=False)
     created_at = db.Column(
         db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

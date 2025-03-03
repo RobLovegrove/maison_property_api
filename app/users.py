@@ -31,13 +31,9 @@ def create_user():
         if User.query.filter_by(email=data["email"]).first():
             return jsonify({"error": "Email already registered"}), 400
 
-        # Check if user_id was provided
-        if "user_id" not in data:
-            return jsonify({"error": "user_id is required"}), 400
-
         # Create user with provided UUID
         user = User(
-            id=data["user_id"],  # Use the Firebase UUID
+            id=data["id"],  # Use the Firebase UUID from request
             first_name=data["first_name"],
             last_name=data["last_name"],
             email=data["email"],
@@ -95,7 +91,7 @@ def get_user(user_id):
     return jsonify(schema.dump(user))
 
 
-@bp.route("/<uuid:user_id>", methods=["PUT"])
+@bp.route("/<string:user_id>", methods=["PUT"])
 def update_user(user_id):
     """Update user details."""
     try:
@@ -123,7 +119,7 @@ def update_user(user_id):
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route("/<uuid:user_id>/dashboard", methods=["GET"])
+@bp.route("/<string:user_id>/dashboard", methods=["GET"])
 def get_user_dashboard(user_id):
     """Get a user's dashboard data including their properties,
     offers, and saved listings"""

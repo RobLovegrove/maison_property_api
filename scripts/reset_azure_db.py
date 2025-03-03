@@ -318,5 +318,25 @@ def reset_database():
         db.session.commit()
         print("Database reset complete!")
 
+def create_test_users():
+    """Create test users"""
+    users = [
+        User(
+            id="test-user-1",  # Changed from uuid4() to string ID
+            first_name="John",
+            last_name="Doe",
+            email="john@example.com",
+            phone_number="+44123456789"
+        ),
+        User(
+            id="test-user-2",  # Changed from uuid4() to string ID
+            first_name="Jane",
+            last_name="Smith",
+            email="jane@example.com",
+            phone_number="+44987654321"
+        )
+    ]
+    # ... rest of function
+
 if __name__ == "__main__":
     reset_database() 

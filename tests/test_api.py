@@ -1,6 +1,6 @@
 import pytest
 from app import create_app, db
-from uuid import UUID, uuid4
+from uuid import UUID
 from app.models import User, UserRole
 from datetime import datetime
 
@@ -30,23 +30,21 @@ def client(app):
 def test_user(session):
     """Create a test user with buyer and seller roles."""
     user = User(
-        id=uuid4(),
+        id="test-user-id",
         first_name="Test",
         last_name="User",
         email=f"test_{datetime.now().timestamp()}@example.com",
         phone_number="+44123456789",
     )
     session.add(user)
-    session.commit()
 
-    # Add roles
+    # Add both buyer and seller roles
     roles = [
         UserRole(user_id=user.id, role_type="buyer"),
         UserRole(user_id=user.id, role_type="seller"),
     ]
     session.add_all(roles)
     session.commit()
-
     return user
 
 
@@ -178,7 +176,7 @@ def test_get_user_dashboard(client, test_user, session):
     assert data["user"]["email"]
 
     # Check roles
-    assert len(data["roles"]) == 2
+    assert len(data["roles"]) == 2  # Updated to expect both roles
     role_types = [role["role_type"] for role in data["roles"]]
     assert "buyer" in role_types
     assert "seller" in role_types

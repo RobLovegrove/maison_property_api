@@ -26,6 +26,43 @@ def test_property_data(test_user):
     }
 
 
+@pytest.fixture
+def test_property(session, test_user):
+    """Create a test property."""
+    property = Property(
+        price=350000,
+        seller_id=test_user.id,  # Using string ID
+        status="for_sale",
+    )
+    session.add(property)
+    session.commit()  # Commit first to get the property.id
+
+    # Add required address
+    address = Address(
+        property_id=property.id,  # Now property.id exists
+        house_number="123",
+        street="Test Street",
+        city="London",
+        postcode="SW1 1AA",
+    )
+    session.add(address)
+
+    # Add required specs
+    specs = PropertySpecs(
+        property_id=property.id,  # Now property.id exists
+        bedrooms=3,
+        bathrooms=2,
+        reception_rooms=1,
+        square_footage=1200.0,
+        property_type="semi-detached",
+        epc_rating="B",
+    )
+    session.add(specs)
+
+    session.commit()  # Commit address and specs
+    return property
+
+
 def test_get_properties_empty(client, session):
     """Test GET /api/properties returns empty list when no properties exist"""
     response = client.get("/api/properties")
@@ -168,24 +205,14 @@ def test_filter_properties(client, init_database):
     assert all(p["price"] >= 300000 for p in response.json)
 
 
-def test_get_user_properties(client, test_user, session):
-    # Create test property
-    property = Property(
-        price=350000,
-        seller_id=test_user.id,  # Changed from user_id
-        status="for_sale",
-    )
-    session.add(property)
-    session.commit()
+def test_get_user_properties(client, test_user, test_property):
+    """Test getting properties for a specific user."""
+    # Verify the property is associated with the test user
+    assert test_property.seller_id == test_user.id
 
     response = client.get(f"/api/properties/user/{test_user.id}")
     assert response.status_code == 200
 
     properties = response.json
-    print("Response JSON:", properties[0].keys())  # For debugging
-
-    assert all(
-        str(p["seller_id"])
-        == str(test_user.id)  # Changed from owner_id to seller_id
-        for p in properties
-    )
+    assert len(properties) > 0
+    assert str(properties[0]["seller_id"]) == test_user.id

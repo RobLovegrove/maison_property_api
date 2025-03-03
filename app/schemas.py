@@ -17,7 +17,7 @@ class UserSchema(Schema):
     class Meta:
         unknown = EXCLUDE
 
-    user_id = fields.UUID(dump_only=True, attribute="id")
+    id = fields.Str()
     first_name = fields.Str(
         required=True, validate=validate.Length(min=1, max=50)
     )
@@ -209,7 +209,7 @@ class UserDashboardSchema(Schema):
     user = fields.Nested(
         UserSchema(
             only=(
-                "user_id",
+                "id",
                 "first_name",
                 "last_name",
                 "email",
@@ -243,7 +243,7 @@ class UserCreateSchema(Schema):
     class Meta:
         unknown = EXCLUDE
 
-    user_id = fields.UUID(required=True)
+    id = fields.Str(required=True, data_key="user_id")
     first_name = fields.Str(
         required=True, validate=validate.Length(min=1, max=50)
     )
@@ -322,7 +322,7 @@ class PropertyCreateSchema(Schema):
         unknown = EXCLUDE
 
     price = fields.Int(required=True, validate=validate.Range(min=0))
-    seller_id = fields.UUID(required=True)
+    seller_id = fields.Str(required=True)
     address = fields.Nested(AddressSchema, required=True)
     specs = fields.Nested(PropertySpecsSchema, required=True)
     features = fields.Nested(PropertyFeaturesSchema, required=False)
@@ -341,7 +341,7 @@ class PropertyOfferSchema(Schema):
 
     offer_id = fields.UUID(dump_only=True, attribute="id")
     property_id = fields.UUID(required=True)
-    buyer_id = fields.UUID(required=True)
+    buyer_id = fields.Str(required=True)
     offer_amount = fields.Integer(
         required=True, validate=validate.Range(min=0)
     )

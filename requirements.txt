@@ -37,4 +37,4 @@ markdown2==2.5.3
 Pillow==10.3.0
 
 # Add Azure Storage SDK
-azure-storage-blob==12.19.0
+azure-storage-blob==12.19

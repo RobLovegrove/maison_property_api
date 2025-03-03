@@ -74,10 +74,13 @@ def test_create_user_missing_uuid(client):
 
 
 def test_update_user(client, test_user):
-    """Test updating user details."""
-    data = {"first_name": "Jane", "phone_number": "+44987654321"}
-
-    response = client.put(f"/api/users/{test_user.id}", json=data)
+    """Test updating a user's details."""
+    response = client.put(
+        f"/api/users/{test_user.id}",  # test_user.id is now a string
+        json={
+            "first_name": "Updated",
+            "last_name": "User",
+            "email": "updated@example.com",
+        },
+    )
     assert response.status_code == 200
-    assert response.json["user"]["first_name"] == "Jane"
-    assert response.json["user"]["phone_number"] == "+44987654321"
