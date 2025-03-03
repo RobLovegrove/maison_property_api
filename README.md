@@ -172,27 +172,124 @@ Error Response (User not found):
 #### POST /api/properties
 Create a new property listing
 
-Example request body:
+Required fields:
+- price (integer)
+- user_id (integer)
+- address (object with house_number, street, city, postcode)
+- specs (object with bedrooms, bathrooms, reception_rooms, square_footage, property_type, epc_rating)
+
+Optional fields:
+- main_image_url (string)
+- images (array of image files, max 5MB each, formats: JPG, JPEG, PNG, GIF)
+- details (object with description, property_type, construction_year, parking_spaces, heating_type)
+- features (object with has_garden, garden_size, has_garage, parking_spaces)
+- media (array of objects with image_url, image_type, display_order)
+
+Example with JSON:
+```bash
+curl -X POST http://localhost:8000/api/properties \
+  -H "Content-Type: application/json" \
+  -d '{
+    "price": 350000,
+    "user_id": 1,
+    "main_image_url": "https://example.com/main.jpg",
+    "address": {
+      "house_number": "123",
+      "street": "Sample Street",
+      "city": "London",
+      "postcode": "SW1 1AA"
+    },
+    "specs": {
+      "bedrooms": 3,
+      "bathrooms": 2,
+      "reception_rooms": 2,
+      "square_footage": 1200.5,
+      "property_type": "semi-detached",
+      "epc_rating": "B"
+    },
+    "details": {
+      "description": "Beautiful family home",
+      "property_type": "residential",
+      "construction_year": 1990,
+      "parking_spaces": 2,
+      "heating_type": "gas central"
+    },
+    "features": {
+      "has_garden": true,
+      "garden_size": 100.5,
+      "has_garage": true,
+      "parking_spaces": 2
+    },
+    "media": [
+      {
+        "image_url": "https://example.com/img1.jpg",
+        "image_type": "interior",
+        "display_order": 1
+      }
+    ]
+  }'
+```
+
+Example with images (multipart form data):
+```bash
+curl -X POST https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties \
+  -F 'data={
+    "price": 350000,
+    "user_id": "3613c096-f41f-479f-a09f-7e0ab53b4eda",
+    "address": {
+      "house_number": "180",
+      "street": "Queen's Gate",
+      "city": "London",
+      "postcode": "SW72AZ"
+    },
+    "specs": {
+      "bedrooms": 5,
+      "bathrooms": 3,
+      "reception_rooms": 2,
+      "square_footage": 2300,
+      "property_type": "semi-detached",
+      "epc_rating": "A"
+    },
+    "details": {
+      "description": "Beautiful family home",
+      "construction_year": 1990,
+      "heating_type": "gas central"
+    },
+    "features": {
+      "has_garden": true,
+      "garden_size": 100,
+      "has_garage": true,
+      "parking_spaces": 2
+    }
+  }' \
+  -F "main_image=@/path/to/main-facade.jpg" \
+  -F "additional_images=@/path/to/kitchen.jpg" \
+  -F "additional_images=@/path/to/living-room.jpg"
+```
+
+Response with images:
 ```json
 {
-  "price": 350000,
-  "seller_id": "bd70f994-5834-45b9-a6f0-8731e51ff0e6",
-  "specs": {
-    "bedrooms": 3,
-    "bathrooms": 2,
-    "reception_rooms": 1,
-    "square_footage": 1200.5,  // Can be number or string ("1200.5")
-    "property_type": "semi-detached",
-    "epc_rating": "B"
-  },
-  "address": {
-    "house_number": "123",
-    "street": "Sample Street",
-    "city": "London",
-    "postcode": "SW1 1AA"
-  }
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "message": "Property created successfully",
+  "warnings": [],
+  "image_urls": [
+    "https://maisonblobstorage.blob.core.windows.net/property-images/abc123.jpg",
+    "https://maisonblobstorage.blob.core.windows.net/property-images/def456.jpg"
+  ]
 }
 ```
+
+Error Response:
+```json
+{
+  "errors": [
+    "Price must be a positive number",
+    "Address street is required"
+  ]
+}
+```
+
 
 #### PUT /api/properties/<uuid:property_id>
 Update an existing property

@@ -109,12 +109,9 @@ def get_properties():
             joinedload(Property.address), joinedload(Property.specs)
         )
 
-        # By default only show 'for_sale' properties unless include_all is True
-        include_all = (
-            request.args.get("include_all", "false").lower() == "true"
-        )
-        if not include_all:
-            query = query.where(Property.status == "for_sale")
+        # Only filter by status if explicitly requested
+        if request.args.get("status"):
+            query = query.where(Property.status == request.args.get("status"))
 
         # Add other filters if provided
         if request.args.get("min_price"):
@@ -134,9 +131,6 @@ def get_properties():
                 PropertySpecs.property_type
                 == request.args.get("property_type")
             )
-        # Add explicit status filter if provided
-        if request.args.get("status"):
-            query = query.where(Property.status == request.args.get("status"))
 
         query = query.order_by(Property.price.desc())
         properties = list(db.session.execute(query).unique().scalars())
