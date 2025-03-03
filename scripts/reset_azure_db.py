@@ -78,7 +78,7 @@ def reset_database():
             price=350000,
             bedrooms=3,
             bathrooms=2,
-            user_id=specific_user_id,  # Using specific user as seller
+            seller_id=specific_user_id,  # Changed from user_id
             main_image_url=property_images[0],
             created_at=datetime.now(UTC),
             status='for_sale'
@@ -230,7 +230,7 @@ def reset_database():
                 price=prop_data["price"],
                 bedrooms=prop_data["bedrooms"],
                 bathrooms=prop_data["bathrooms"],
-                user_id=seller_id,  # Alternate between sellers
+                seller_id=seller_id,  # Alternate between sellers
                 main_image_url=property_images[0],
                 created_at=datetime.now(UTC),
                 status=prop_data["status"]

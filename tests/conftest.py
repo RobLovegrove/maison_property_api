@@ -87,7 +87,7 @@ def init_database(app, session, test_user):
         price=350000,
         bedrooms=3,
         bathrooms=2.0,
-        user_id=test_user.id,  # This is already a UUID
+        seller_id=test_user.id,  # Changed from user_id
         main_image_url=(
             "https://maisonblobstorage.blob.core.windows.net/"
             "property-images/"

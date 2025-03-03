@@ -109,7 +109,7 @@ class PropertyListSchema(Schema):
     bathrooms = fields.Int()
     main_image_url = fields.URL(allow_none=True)
     created_at = fields.DateTime(format="iso")
-    seller_id = fields.UUID(required=True, attribute="user_id")
+    seller_id = fields.UUID(required=True, attribute="seller_id")
     address = fields.Nested(
         AddressSchema(only=("street", "city", "postcode")), dump_only=True
     )

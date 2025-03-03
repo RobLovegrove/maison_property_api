@@ -55,7 +55,7 @@ class User(db.Model):
         db.String(20), nullable=True
     )  # Nullable as some might not provide phone
 
-    properties = relationship("Property", back_populates="owner")
+    properties = relationship("Property", back_populates="seller")
     roles = relationship(
         "UserRole", back_populates="user", cascade="all, delete-orphan"
     )
@@ -107,7 +107,7 @@ class Property(db.Model):
     bedrooms = db.Column(db.Integer)
     bathrooms = db.Column(db.Float)
     main_image_url = db.Column(db.String(500))
-    user_id = db.Column(GUID(), ForeignKey("users.id"), nullable=False)
+    seller_id = db.Column(GUID(), ForeignKey("users.id"), nullable=False)
     created_at = db.Column(
         db.DateTime(timezone=True), default=datetime.now(timezone.utc)
     )
@@ -125,7 +125,7 @@ class Property(db.Model):
         uselist=False,
         cascade="all, delete-orphan",
     )
-    owner = relationship("User", back_populates="properties")
+    seller = relationship("User", back_populates="properties")
     media = relationship(
         "PropertyMedia",
         back_populates="property",

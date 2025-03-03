@@ -145,7 +145,7 @@ def get_user_dashboard(user_id):
     if any(role.role_type == "seller" for role in user.roles):
         # Get properties with related data
         properties = (
-            Property.query.filter_by(user_id=user_id)
+            Property.query.filter_by(seller_id=user_id)
             .options(
                 db.joinedload(Property.address), db.joinedload(Property.specs)
             )

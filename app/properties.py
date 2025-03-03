@@ -144,7 +144,7 @@ def get_properties():
                     "bathrooms": p.bathrooms,
                     "main_image_url": p.main_image_url,
                     "created_at": p.created_at.isoformat(),
-                    "seller_id": str(p.user_id),
+                    "seller_id": str(p.seller_id),
                     "status": p.status,
                     "address": {
                         "house_number": (
@@ -188,6 +188,7 @@ def get_property(property_id):
                 "bathrooms": property_item.bathrooms,
                 "main_image_url": property_item.main_image_url,
                 "created_at": property_item.created_at.isoformat(),
+                "status": property_item.status,
                 "details": {
                     "description": (
                         property_item.details.description
@@ -240,7 +241,7 @@ def get_property(property_id):
                     ),
                     None,
                 ),
-                "seller_id": str(property_item.user_id),
+                "seller_id": str(property_item.seller_id),
                 "address": {
                     "house_number": (
                         property_item.address.house_number
@@ -391,7 +392,7 @@ def create_property():
             bedrooms=int(data["specs"]["bedrooms"]),
             bathrooms=float(data["specs"]["bathrooms"]),
             main_image_url=image_urls[0] if image_urls else None,
-            user_id=data["seller_id"],
+            seller_id=data["seller_id"],
             created_at=datetime.now(UTC),
             status=data.get("status", "for_sale"),
         )
@@ -604,7 +605,7 @@ def get_user_properties(user_id):
         query = (
             select(Property)
             .options(joinedload(Property.address), joinedload(Property.specs))
-            .where(Property.user_id == user_id)
+            .where(Property.seller_id == user_id)
             .order_by(Property.price.desc())
         )
 
@@ -619,7 +620,7 @@ def get_user_properties(user_id):
                     "bathrooms": p.bathrooms,
                     "main_image_url": p.main_image_url,
                     "created_at": p.created_at.isoformat(),
-                    "seller_id": str(p.user_id),
+                    "seller_id": str(p.seller_id),
                     "address": {
                         "house_number": (
                             p.address.house_number if p.address else None

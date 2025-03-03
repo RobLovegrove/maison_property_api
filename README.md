@@ -187,12 +187,11 @@ Optional fields:
 
 Example with JSON:
 ```bash
-curl -X POST http://localhost:8000/api/properties \
+  curl -X POST https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties \
   -H "Content-Type: application/json" \
   -d '{
     "price": 350000,
-    "user_id": 1,
-    "main_image_url": "https://example.com/main.jpg",
+    "seller_id": "3613c096-f41f-479f-a09f-7e0ab53b4eda",
     "address": {
       "house_number": "123",
       "street": "Sample Street",
@@ -219,14 +218,7 @@ curl -X POST http://localhost:8000/api/properties \
       "garden_size": 100.5,
       "has_garage": true,
       "parking_spaces": 2
-    },
-    "media": [
-      {
-        "image_url": "https://example.com/img1.jpg",
-        "image_type": "interior",
-        "display_order": 1
-      }
-    ]
+    }
   }'
 ```
 
@@ -235,10 +227,10 @@ Example with images (multipart form data):
 curl -X POST https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties \
   -F 'data={
     "price": 350000,
-    "user_id": "3613c096-f41f-479f-a09f-7e0ab53b4eda",
+    "seller_id": "3613c096-f41f-479f-a09f-7e0ab53b4eda",
     "address": {
       "house_number": "180",
-      "street": "Queen's Gate",
+      "street": "Queen'\''s Gate",
       "city": "London",
       "postcode": "SW72AZ"
     },
@@ -262,9 +254,10 @@ curl -X POST https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io
       "parking_spaces": 2
     }
   }' \
-  -F "main_image=@/path/to/main-facade.jpg" \
-  -F "additional_images=@/path/to/kitchen.jpg" \
-  -F "additional_images=@/path/to/living-room.jpg"
+  -F "main_image=@/Users/roblovegrove/Documents/maison/properties_api/Image Examples/HouseTwo/Brittany-Jones-Personal-01.webp" \
+  -F "additional_image=@/Users/roblovegrove/Documents/maison/properties_api/Image Examples/HouseTwo/istockphoto-1494221275-612x612.jpg" \
+  -F "additional_image=@/Users/roblovegrove/Documents/maison/properties_api/Image Examples/HouseTwo/Blog-Post-1-1024x684.jpg" \
+  -F "additional_image=@/Users/roblovegrove/Documents/maison/properties_api/Image Examples/HouseTwo/Cap-dAntibes-beautiful-bedroom.jpeg"
 ```
 
 Response with images:

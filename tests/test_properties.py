@@ -1,7 +1,5 @@
 import pytest
 from app.models import Property, Address, PropertySpecs  # Add this import
-from datetime import datetime, UTC
-from uuid import uuid4
 
 
 @pytest.fixture
@@ -72,12 +70,9 @@ def test_get_property_detail(client, init_database):
 def test_get_property_without_media(client, test_user, session):
     """Test getting property without any media."""
     property = Property(
-        id=uuid4(),
         price=350000,
-        bedrooms=3,
-        bathrooms=2.0,
-        user_id=test_user.id,
-        created_at=datetime.now(UTC),
+        seller_id=test_user.id,  # Changed from user_id
+        status="for_sale",
     )
     session.add(property)
     session.commit()
@@ -105,7 +100,7 @@ def test_update_property(client, test_user, session):
     # Create test property with all required fields
     property = Property(
         price=350000,
-        user_id=test_user.id,
+        seller_id=test_user.id,  # Changed from user_id
         status="for_sale",
         bedrooms=3,
         bathrooms=2,
@@ -177,7 +172,7 @@ def test_get_user_properties(client, test_user, session):
     # Create test property
     property = Property(
         price=350000,
-        user_id=test_user.id,  # Changed from owner_id
+        seller_id=test_user.id,  # Changed from user_id
         status="for_sale",
     )
     session.add(property)
