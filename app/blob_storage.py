@@ -1,3 +1,29 @@
+"""
+THIS SCRIPT WILL DELETE ORPHANED IMAGES FROM BLOB STORAGE
+
+Details on how to use the script are described below:
+# Activate virtual environment
+source .venv/bin/activate
+
+# Do a dry run first
+python scripts/cleanup_blob_storage.py
+# This will output something like:
+# Found 50 images in database
+# Found 65 images in blob storage
+# Found 15 orphaned images
+#
+# DRY RUN - No images will be deleted
+#
+# Orphaned images that would be deleted:
+# - abc123.jpg
+# - def456.jpg
+# ...
+
+# If the output looks correct, run with --execute
+python scripts/cleanup_blob_storage.py --execute
+# This will actually delete the orphaned images
+"""
+
 import os
 from uuid import uuid4
 from app.exceptions import BlobStorageError
@@ -87,6 +113,17 @@ class BlobStorageService:
         except Exception as e:
             raise BlobStorageError(f"Failed to delete image: {str(e)}")
 
+    def list_all_blobs(self):
+        """List all blobs in the container"""
+        try:
+            container_client = self.blob_service_client.get_container_client(
+                self.container_name
+            )
+            return [blob.name for blob in container_client.list_blobs()]
+        except Exception as e:
+            current_app.logger.error(f"Error listing blobs: {e}")
+            raise
+
 
 class MockBlobStorageService:
     """Mock service for testing"""
@@ -108,3 +145,8 @@ class MockBlobStorageService:
         """Mock delete that does nothing"""
         current_app.logger.warning("Using mock delete_image method")
         pass
+
+    def list_all_blobs(self):
+        """Mock list that returns empty list"""
+        current_app.logger.warning("Using mock list_all_blobs method")
+        return []
