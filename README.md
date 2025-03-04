@@ -29,16 +29,16 @@ Get a list of all properties
 Example:
 ```bash
 # Get all properties
-curl http://localhost:8000/api/properties
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties
 
 # Get all properties including sold and under offer
-curl http://localhost:8000/api/properties?include_all=true
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties?include_all=true
 
 # Filter properties
-curl http://localhost:8000/api/properties?min_price=350000
-curl http://localhost:8000/api/properties?property_type=semi-detached
-curl http://localhost:8000/api/properties?min_bedrooms=3
-curl http://localhost:8000/api/properties?postcode=SW1
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties?min_price=350000
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties?property_type=semi-detached
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties?min_bedrooms=3
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties?postcode=SW1
 ```
 
 Response:
@@ -72,7 +72,7 @@ Get details of a specific property
 
 Example:
 ```bash
-curl http://localhost:8000/api/properties/123e4567-e89b-12d3-a456-426614174000
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties/123e4567-e89b-12d3-a456-426614174000
 ```
 
 Response:
@@ -133,7 +133,7 @@ Get all properties for a specific user
 
 Example:
 ```bash
-curl http://localhost:8000/api/properties/user/1
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties/user/1
 ```
 
 Response:
@@ -289,7 +289,7 @@ Update an existing property
 
 Example:
 ```bash
-curl -X PUT http://localhost:8000/api/properties/123e4567-e89b-12d3-a456-426614174000 \
+curl -X PUT https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties/123e4567-e89b-12d3-a456-426614174000 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${FIREBASE_ID_TOKEN}" \
   -d '{
@@ -324,7 +324,7 @@ Delete a property (Protected - Requires authentication)
 
 Example:
 ```bash
-curl -X DELETE http://localhost:8000/api/properties/123e4567-e89b-12d3-a456-426614174000 \
+curl -X DELETE https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties/123e4567-e89b-12d3-a456-426614174000 \
   -H "Authorization: Bearer ${FIREBASE_ID_TOKEN}"
 ```
 
@@ -344,39 +344,66 @@ Error Response:
 
 ### Users
 
-#### GET /api/users
-Get a list of all users with their roles and counts
+#### POST /api/users
+Create a new user account
+
+Required fields:
+- user_id (UUID): User's Firebase UUID
+- first_name (string): User's first name
+- last_name (string): User's last name
+- email (string): User's email address
+
+Optional fields:
+- phone_number (string): User's phone number
+- roles (array): User roles (defaults to ["buyer"] if not specified)
 
 Example:
 ```bash
-curl http://localhost:8000/api/users
+  curl -X POST https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "RY34xpmeKTWHXstoZKdX4JrKchL2",
+    "first_name": "Teej",
+    "last_name": "Amosu",
+    "email": "Teej@maisonai.co.uk",
+    "phone_number": "07700900000",
+    "roles": [
+      {"role_type": "buyer"},
+      {"role_type": "seller"}
+    ]
+  }'
 ```
 
 Response:
 ```json
 {
-  "sellers": [
-    "3613c096-f41f-479f-a09f-7e0ab53b4eda",
-    "4723d197-g52f-580f-b10f-8e0ab53b5fdb"
-  ],
-  "buyers": [
-    "3613c096-f41f-479f-a09f-7e0ab53b4eda",
-    "5834e298-h63g-691g-c21g-9f1bc64c6gec",
-    "6945f399-i74h-702h-d32h-0g2cd75d7hfd"
-  ],
-  "counts": {
-    "total_buyers": 3,
-    "total_sellers": 2
+  "message": "User created successfully",
+  "user": {
+    "user_id": "bd70f994-5834-45b9-a6f0-8731e51ff0e6",
+    "first_name": "John",
+    "last_name": "Smith",
+    "email": "john.smith@example.com",
+    "phone_number": "07700900000",
+    "roles": [
+      {"role_type": "buyer"},
+      {"role_type": "seller"}
+    ]
   }
 }
 ```
 
-Note: Some users may appear in both sellers and buyers lists if they have both roles.
-
-Error Response:
+Error Responses:
 ```json
 {
-  "error": "Failed to fetch users"
+  "error": "Email already registered"
+}
+```
+```json
+{
+  "error": {
+    "email": ["Not a valid email address"],
+    "first_name": ["Length must be between 1 and 50"]
+  }
 }
 ```
 
@@ -385,7 +412,7 @@ Get a user's dashboard data including their properties, offers, and saved listin
 
 Example:
 ```bash
-curl http://localhost:8000/api/users/3613c096-f41f-479f-a09f-7e0ab53b4eda/dashboard
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users/3613c096-f41f-479f-a09f-7e0ab53b4eda/dashboard
 ```
 
 Response:
@@ -482,6 +509,42 @@ Error Response:
 }
 ```
 
+#### GET /api/users
+Get a list of all users with their roles and counts
+
+Example:
+```bash
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users
+```
+
+Response:
+```json
+{
+  "sellers": [
+    "3613c096-f41f-479f-a09f-7e0ab53b4eda",
+    "4723d197-g52f-580f-b10f-8e0ab53b5fdb"
+  ],
+  "buyers": [
+    "3613c096-f41f-479f-a09f-7e0ab53b4eda",
+    "5834e298-h63g-691g-c21g-9f1bc64c6gec",
+    "6945f399-i74h-702h-d32h-0g2cd75d7hfd"
+  ],
+  "counts": {
+    "total_buyers": 3,
+    "total_sellers": 2
+  }
+}
+```
+
+Note: Some users may appear in both sellers and buyers lists if they have both roles.
+
+Error Response:
+```json
+{
+  "error": "Failed to fetch users"
+}
+```
+
 #### POST /api/users/{user_id}/saved-properties
 Save a property for a buyer
 
@@ -494,7 +557,7 @@ Optional fields:
 Example:
 ```bash
 # Save property with notes
-curl -X POST http://localhost:8080/api/users/bd70f994-5834-45b9-a6f0-8731e51ff0e6/saved-properties \
+curl -X POST https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users/bd70f994-5834-45b9-a6f0-8731e51ff0e6/saved-properties \
   -H "Content-Type: application/json" \
   -d '{
     "property_id": "fe08df1c-d24e-4f18-9c7b-cfbe842175f1",
@@ -502,7 +565,7 @@ curl -X POST http://localhost:8080/api/users/bd70f994-5834-45b9-a6f0-8731e51ff0e
   }'
 
 # Save property without notes
-curl -X POST http://localhost:8080/api/users/bd70f994-5834-45b9-a6f0-8731e51ff0e6/saved-properties \
+curl -X POST https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users/bd70f994-5834-45b9-a6f0-8731e51ff0e6/saved-properties \
   -H "Content-Type: application/json" \
   -d '{
     "property_id": "fe08df1c-d24e-4f18-9c7b-cfbe842175f1"
@@ -544,6 +607,84 @@ Error Responses:
 }
 ```
 
+#### DELETE /api/users/{user_id}/saved-properties/{property_id}
+Remove a property from a buyer's saved properties
+
+Example:
+```bash
+curl -X DELETE https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users/bd70f994-5834-45b9-a6f0-8731e51ff0e6/saved-properties/fe08df1c-d24e-4f18-9c7b-cfbe842175f1
+```
+
+Response:
+```json
+{
+  "message": "Property removed from saved properties",
+  "removed_property": {
+    "user_id": "bd70f994-5834-45b9-a6f0-8731e51ff0e6",
+    "property_id": "fe08df1c-d24e-4f18-9c7b-cfbe842175f1"
+  }
+}
+```
+
+Error Responses:
+```json
+{
+  "error": "User must be a buyer to manage saved properties"
+}
+```
+```json
+{
+  "error": "Property not found in saved properties"
+}
+```
+
+#### PATCH /api/users/{user_id}/saved-properties/{property_id}/notes
+Update notes for a saved property
+
+Required fields:
+- notes (string): The new notes for the saved property
+
+Example:
+```bash
+curl -X PATCH https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users/bd70f994-5834-45b9-a6f0-8731e51ff0e6/saved-properties/fe08df1c-d24e-4f18-9c7b-cfbe842175f1/notes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "notes": "Great location, close to schools. Viewing scheduled for next week."
+  }'
+```
+
+Response:
+```json
+{
+  "message": "Notes updated successfully",
+  "saved_property": {
+    "user_id": "bd70f994-5834-45b9-a6f0-8731e51ff0e6",
+    "property_id": "fe08df1c-d24e-4f18-9c7b-cfbe842175f1",
+    "notes": "Great location, close to schools. Viewing scheduled for next week.",
+    "updated_at": "2024-02-25T16:30:00Z"
+  }
+}
+```
+
+Error Responses:
+```json
+{
+  "error": "User must be a buyer to update saved properties"
+}
+```
+```json
+{
+  "error": "Property not found in saved properties"
+}
+```
+```json
+{
+  "error": "notes field is required"
+}
+```
+
+### Offer Management
+
 #### POST /api/users/{user_id}/offers
 Create a new offer or counter-offer on a property
 
@@ -556,7 +697,7 @@ Optional fields for counter-offers:
 
 Example - New Offer:
 ```bash
-curl -X POST http://localhost:8080/api/users/bd70f994-5834-45b9-a6f0-8731e51ff0e6/offers \
+curl -X POST https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users/bd70f994-5834-45b9-a6f0-8731e51ff0e6/offers \
   -H "Content-Type: application/json" \
   -d '{
     "property_id": "fe08df1c-d24e-4f18-9c7b-cfbe842175f1",
@@ -566,7 +707,7 @@ curl -X POST http://localhost:8080/api/users/bd70f994-5834-45b9-a6f0-8731e51ff0e
 
 Example - Counter Offer:
 ```bash
-curl -X POST http://localhost:8080/api/users/3613c096-f41f-479f-a09f-7e0ab53b4eda/offers \
+curl -X POST https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users/3613c096-f41f-479f-a09f-7e0ab53b4eda/offers \
   -H "Content-Type: application/json" \
   -d '{
     "property_id": "fe08df1c-d24e-4f18-9c7b-cfbe842175f1",
@@ -619,146 +760,6 @@ Error Responses:
 }
 ```
 
-#### DELETE /api/users/{user_id}/saved-properties/{property_id}
-Remove a property from a buyer's saved properties
-
-Example:
-```bash
-curl -X DELETE http://localhost:8080/api/users/bd70f994-5834-45b9-a6f0-8731e51ff0e6/saved-properties/fe08df1c-d24e-4f18-9c7b-cfbe842175f1
-```
-
-Response:
-```json
-{
-  "message": "Property removed from saved properties",
-  "removed_property": {
-    "user_id": "bd70f994-5834-45b9-a6f0-8731e51ff0e6",
-    "property_id": "fe08df1c-d24e-4f18-9c7b-cfbe842175f1"
-  }
-}
-```
-
-Error Responses:
-```json
-{
-  "error": "User must be a buyer to manage saved properties"
-}
-```
-```json
-{
-  "error": "Property not found in saved properties"
-}
-```
-
-#### PATCH /api/users/{user_id}/saved-properties/{property_id}/notes
-Update notes for a saved property
-
-Required fields:
-- notes (string): The new notes for the saved property
-
-Example:
-```bash
-curl -X PATCH http://localhost:8080/api/users/bd70f994-5834-45b9-a6f0-8731e51ff0e6/saved-properties/fe08df1c-d24e-4f18-9c7b-cfbe842175f1/notes \
-  -H "Content-Type: application/json" \
-  -d '{
-    "notes": "Great location, close to schools. Viewing scheduled for next week."
-  }'
-```
-
-Response:
-```json
-{
-  "message": "Notes updated successfully",
-  "saved_property": {
-    "user_id": "bd70f994-5834-45b9-a6f0-8731e51ff0e6",
-    "property_id": "fe08df1c-d24e-4f18-9c7b-cfbe842175f1",
-    "notes": "Great location, close to schools. Viewing scheduled for next week.",
-    "updated_at": "2024-02-25T16:30:00Z"
-  }
-}
-```
-
-Error Responses:
-```json
-{
-  "error": "User must be a buyer to update saved properties"
-}
-```
-```json
-{
-  "error": "Property not found in saved properties"
-}
-```
-```json
-{
-  "error": "notes field is required"
-}
-```
-
-#### POST /api/users
-Create a new user account
-
-Required fields:
-- user_id (UUID): User's Firebase UUID
-- first_name (string): User's first name
-- last_name (string): User's last name
-- email (string): User's email address
-
-Optional fields:
-- phone_number (string): User's phone number
-- roles (array): User roles (defaults to ["buyer"] if not specified)
-
-Example:
-```bash
-  curl -X POST https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users \
-  -H "Content-Type: application/json" \
-  -d '{
-    "user_id": "RY34xpmeKTWHXstoZKdX4JrKchL2",
-    "first_name": "Teej",
-    "last_name": "Amosu",
-    "email": "Teej@maisonai.co.uk",
-    "phone_number": "07700900000",
-    "roles": [
-      {"role_type": "buyer"},
-      {"role_type": "seller"}
-    ]
-  }'
-```
-
-Response:
-```json
-{
-  "message": "User created successfully",
-  "user": {
-    "user_id": "bd70f994-5834-45b9-a6f0-8731e51ff0e6",
-    "first_name": "John",
-    "last_name": "Smith",
-    "email": "john.smith@example.com",
-    "phone_number": "07700900000",
-    "roles": [
-      {"role_type": "buyer"},
-      {"role_type": "seller"}
-    ]
-  }
-}
-```
-
-Error Responses:
-```json
-{
-  "error": "Email already registered"
-}
-```
-```json
-{
-  "error": {
-    "email": ["Not a valid email address"],
-    "first_name": ["Length must be between 1 and 50"]
-  }
-}
-```
-
-### Offer Management
 
 #### PUT /api/users/{user_id}/offers/{negotiation_id}
 Update an offer's status (accept/reject/cancel)
@@ -776,21 +777,21 @@ Rules:
 Examples:
 ```bash
 # Accept an offer
-curl -X PUT http://localhost:8000/api/users/seller_id/offers/negotiation_id \
+curl -X PUT https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users/seller_id/offers/negotiation_id \
   -H "Content-Type: application/json" \
   -d '{
     "action": "accept"
   }'
 
 # Reject an offer
-curl -X PUT http://localhost:8000/api/users/seller_id/offers/negotiation_id \
+curl -X PUT https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users/seller_id/offers/negotiation_id \
   -H "Content-Type: application/json" \
   -d '{
     "action": "reject"
   }'
 
 # Cancel your offer/counter-offer
-curl -X PUT http://localhost:8000/api/users/user_id/offers/negotiation_id \
+curl -X PUT https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users/user_id/offers/negotiation_id \
   -H "Content-Type: application/json" \
   -d '{
     "action": "cancel"
@@ -860,21 +861,21 @@ Properties can have one of three statuses: `for_sale`, `under_offer`, or `sold`.
 
 ```bash
 # Mark property as under offer
-curl -X PUT http://localhost:8000/api/properties/123e4567-e89b-12d3-a456-426614174000 \
+curl -X PUT https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties/123e4567-e89b-12d3-a456-426614174000 \
   -H "Content-Type: application/json" \
   -d '{
     "status": "under_offer"
   }'
 
 # Mark property as sold
-curl -X PUT http://localhost:8000/api/properties/123e4567-e89b-12d3-a456-426614174000 \
+curl -X PUT https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties/123e4567-e89b-12d3-a456-426614174000 \
   -H "Content-Type: application/json" \
   -d '{
     "status": "sold"
   }'
 
 # Return property to for_sale (only valid from under_offer)
-curl -X PUT http://localhost:8000/api/properties/123e4567-e89b-12d3-a456-426614174000 \
+curl -X PUT https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties/123e4567-e89b-12d3-a456-426614174000 \
   -H "Content-Type: application/json" \
   -d '{
     "status": "for_sale"
@@ -907,16 +908,16 @@ Error Response (Updating Sold Property):
 
 ```bash
 # Get only properties for sale (default behavior)
-curl http://localhost:8000/api/properties
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties
 
 # Get properties under offer
-curl http://localhost:8000/api/properties?status=under_offer
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties?status=under_offer
 
 # Get sold properties
-curl http://localhost:8000/api/properties?status=sold
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties?status=sold
 
 # Get all properties regardless of status
-curl http://localhost:8000/api/properties?include_all=true
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/properties?include_all=true
 ```
 
 ## Recent Updates
@@ -1026,7 +1027,7 @@ docker run -d \
 
 3. Test the API:
 ```bash
-curl http://localhost:8000/health
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/health
 ```
 
 ## Error Responses

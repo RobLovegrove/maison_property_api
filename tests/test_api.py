@@ -176,14 +176,17 @@ def test_get_user_dashboard(client, test_user, session):
     assert data["user"]["email"]
 
     # Check roles
-    assert len(data["roles"]) == 2  # Updated to expect both roles
+    assert len(data["roles"]) == 2
     role_types = [role["role_type"] for role in data["roles"]]
     assert "buyer" in role_types
     assert "seller" in role_types
 
     # Check properties (as seller)
     assert len(data["listed_properties"]) == 1
-    assert data["listed_properties"][0]["property_id"] == property_id
+    listed_property = data["listed_properties"][0]
+    assert listed_property["property_id"] == property_id
+    assert "status" in listed_property
+    assert listed_property["status"] == "for_sale"
 
     # Check saved properties and negotiations
     assert "saved_properties" in data

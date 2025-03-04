@@ -12,7 +12,6 @@ from app.schemas import (
     UserSchema,
     UserCreateSchema,
     UserUpdateSchema,
-    UserDashboardSchema,
 )
 from marshmallow import ValidationError
 from datetime import datetime, timezone
@@ -129,8 +128,14 @@ def get_user_dashboard(user_id):
 
     # Build dashboard data
     dashboard_data = {
-        "user": user,
-        "roles": user.roles,
+        "user": {
+            "id": user.id,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "phone_number": user.phone_number,
+        },
+        "roles": [{"role_type": role.role_type} for role in user.roles],
         "listed_properties": [],
         "saved_properties": [],
         "negotiations_as_buyer": [],
@@ -139,7 +144,6 @@ def get_user_dashboard(user_id):
 
     # If user is a seller, get their listed properties and negotiations
     if any(role.role_type == "seller" for role in user.roles):
-        # Get properties with related data
         properties = (
             Property.query.filter_by(seller_id=user_id)
             .options(
@@ -147,25 +151,82 @@ def get_user_dashboard(user_id):
             )
             .all()
         )
-        dashboard_data["listed_properties"] = properties
 
-        # Get all active negotiations for their properties
-        for property in properties:
-            negotiations = (
-                PropertyNegotiation.query.filter_by(property_id=property.id)
-                .options(
-                    db.joinedload(PropertyNegotiation.transactions),
-                    db.joinedload(PropertyNegotiation.buyer),
-                )
-                .all()
+        dashboard_data["listed_properties"] = [
+            {
+                "property_id": str(p.id),
+                "price": p.price,
+                "bedrooms": p.bedrooms,
+                "bathrooms": p.bathrooms,
+                "main_image_url": p.main_image_url,
+                "created_at": (
+                    p.created_at.isoformat() if p.created_at else None
+                ),
+                "seller_id": p.seller_id,
+                "status": p.status,
+                "address": {
+                    "house_number": (
+                        p.address.house_number if p.address else None
+                    ),
+                    "street": p.address.street if p.address else None,
+                    "city": p.address.city if p.address else None,
+                    "postcode": p.address.postcode if p.address else None,
+                },
+                "specs": {
+                    "property_type": (
+                        p.specs.property_type if p.specs else None
+                    ),
+                    "square_footage": (
+                        float(p.specs.square_footage)
+                        if p.specs and p.specs.square_footage
+                        else None
+                    ),
+                },
+            }
+            for p in properties
+        ]
+
+        dashboard_data["total_properties_listed"] = len(properties)
+
+        # Get negotiations where they are the seller
+        seller_negotiations = (
+            PropertyNegotiation.query.join(Property)
+            .filter(Property.seller_id == user_id)
+            .options(
+                db.joinedload(PropertyNegotiation.transactions),
+                db.joinedload(PropertyNegotiation.buyer),
             )
-            dashboard_data["negotiations_as_seller"].extend(negotiations)
+            .all()
+        )
+
+        dashboard_data["negotiations_as_seller"] = [
+            {
+                "negotiation_id": str(neg.id),
+                "property_id": str(neg.property_id),
+                "buyer_id": str(neg.buyer_id),
+                "buyer_name": f"{neg.buyer.first_name} {neg.buyer.last_name}",
+                "status": neg.status,
+                "created_at": (
+                    neg.created_at.isoformat() if neg.created_at else None
+                ),
+                "last_offer_by": str(neg.last_offer_by),
+                "current_offer": (
+                    neg.transactions[-1].offer_amount
+                    if neg.transactions
+                    else None
+                ),
+                "last_updated": (
+                    neg.updated_at.isoformat() if neg.updated_at else None
+                ),
+            }
+            for neg in seller_negotiations
+        ]
 
     # If user is a buyer, get their saved properties and negotiations
     if any(role.role_type == "buyer" for role in user.roles):
-        # Get saved properties with notes
         saved = SavedProperty.query.filter_by(user_id=user_id).all()
         saved_properties = []
+
         for save in saved:
             property = (
                 Property.query.filter_by(id=save.property_id)
@@ -176,62 +237,108 @@ def get_user_dashboard(user_id):
                 .first()
             )
             if property:
-                # Create property dict with saved notes
-                property_dict = {
-                    "property_id": str(property.id),
-                    "price": property.price,
-                    "status": property.status,
-                    "main_image_url": property.main_image_url,
-                    "notes": save.notes,
-                    "saved_at": save.created_at,
-                    "address": {
-                        "street": (
-                            property.address.street
-                            if property.address
+                saved_properties.append(
+                    {
+                        "property_id": str(property.id),
+                        "price": property.price,
+                        "bedrooms": property.bedrooms,
+                        "bathrooms": property.bathrooms,
+                        "main_image_url": property.main_image_url,
+                        "created_at": (
+                            property.created_at.isoformat()
+                            if property.created_at
                             else None
                         ),
-                        "city": (
-                            property.address.city if property.address else None
-                        ),
-                        "postcode": (
-                            property.address.postcode
-                            if property.address
+                        "seller_id": property.seller_id,
+                        "status": property.status,
+                        "address": {
+                            "house_number": (
+                                property.address.house_number
+                                if property.address
+                                else None
+                            ),
+                            "street": (
+                                property.address.street
+                                if property.address
+                                else None
+                            ),
+                            "city": (
+                                property.address.city
+                                if property.address
+                                else None
+                            ),
+                            "postcode": (
+                                property.address.postcode
+                                if property.address
+                                else None
+                            ),
+                        },
+                        "specs": {
+                            "property_type": (
+                                property.specs.property_type
+                                if property.specs
+                                else None
+                            ),
+                            "square_footage": (
+                                float(property.specs.square_footage)
+                                if property.specs
+                                and property.specs.square_footage
+                                else None
+                            ),
+                        },
+                        "notes": save.notes,
+                        "saved_at": (
+                            save.created_at.isoformat()
+                            if save.created_at
                             else None
                         ),
-                    },
-                    "specs": {
-                        "bedrooms": (
-                            property.specs.bedrooms if property.specs else None
-                        ),
-                        "bathrooms": (
-                            property.specs.bathrooms
-                            if property.specs
-                            else None
-                        ),
-                        "property_type": (
-                            property.specs.property_type
-                            if property.specs
-                            else None
-                        ),
-                    },
-                }
-                saved_properties.append(property_dict)
-        dashboard_data["saved_properties"] = saved_properties
+                    }
+                )
 
-        # Get all negotiations where they are the buyer
-        negotiations = (
+        dashboard_data["saved_properties"] = saved_properties
+        dashboard_data["total_saved_properties"] = len(saved_properties)
+
+        # Get negotiations where they are the buyer
+        buyer_negotiations = (
             PropertyNegotiation.query.filter_by(buyer_id=user_id)
             .options(
                 db.joinedload(PropertyNegotiation.transactions),
-                db.joinedload(PropertyNegotiation.property),
+                db.joinedload(PropertyNegotiation.property).joinedload(
+                    Property.seller
+                ),
             )
             .all()
         )
-        dashboard_data["negotiations_as_buyer"] = negotiations
 
-    # Serialize and return the data
-    schema = UserDashboardSchema()
-    return jsonify(schema.dump(dashboard_data))
+        dashboard_data["negotiations_as_buyer"] = [
+            {
+                "negotiation_id": str(neg.id),
+                "property_id": str(neg.property_id),
+                "seller_id": str(neg.property.seller_id),
+                "seller_name": (
+                    f"{neg.property.seller.first_name} "
+                    f"{neg.property.seller.last_name}"
+                    if neg.property.seller
+                    else None
+                ),
+                "status": neg.status,
+                "created_at": (
+                    neg.created_at.isoformat() if neg.created_at else None
+                ),
+                "last_offer_by": str(neg.last_offer_by),
+                "current_offer": (
+                    neg.transactions[-1].offer_amount
+                    if neg.transactions
+                    else None
+                ),
+                "last_updated": (
+                    neg.updated_at.isoformat() if neg.updated_at else None
+                ),
+            }
+            for neg in buyer_negotiations
+        ]
+
+    return jsonify(dashboard_data)
 
 
 @bp.route("/<uuid:user_id>/saved-properties", methods=["POST"])
@@ -459,7 +566,7 @@ def get_users():
         return jsonify({"error": "Failed to fetch users"}), 500
 
 
-@bp.route("/<uuid:user_id>/offers", methods=["POST"])
+@bp.route("/<string:user_id>/offers", methods=["POST"])
 def create_offer(user_id):
     """Create or counter an offer on a property"""
     try:
@@ -497,7 +604,7 @@ def create_offer(user_id):
             # Verify user is involved in this negotiation
             if str(user_id) != str(negotiation.buyer_id) and str(
                 user_id
-            ) != str(property.user_id):
+            ) != str(property.seller_id):
                 return (
                     jsonify({"error": "Unauthorized to make counter-offer"}),
                     403,
@@ -524,7 +631,7 @@ def create_offer(user_id):
                 )
 
             # Verify user isn't the seller
-            if str(user_id) == str(property.user_id):
+            if str(user_id) == str(property.seller_id):
                 return (
                     jsonify(
                         {"error": "Cannot make offer on your own property"}
@@ -571,6 +678,7 @@ def create_offer(user_id):
                         "negotiation_id": str(negotiation.id),
                         "property_id": str(property_id),
                         "buyer_id": str(negotiation.buyer_id),
+                        "seller_id": str(property.seller_id),
                         "current_offer": offer_amount,
                         "status": negotiation.status,
                         "created_at": negotiation.created_at.isoformat(),
@@ -589,7 +697,10 @@ def create_offer(user_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error creating offer: {str(e)}")
-        return jsonify({"error": "Failed to create offer"}), 500
+        return (
+            jsonify({"error": "Failed to create offer", "details": str(e)}),
+            500,
+        )
 
 
 @bp.route("/<uuid:user_id>/offers/<uuid:negotiation_id>", methods=["PUT"])
