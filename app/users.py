@@ -341,7 +341,7 @@ def get_user_dashboard(user_id):
     return jsonify(dashboard_data)
 
 
-@bp.route("/<uuid:user_id>/saved-properties", methods=["POST"])
+@bp.route("/<string:user_id>/saved-properties", methods=["POST"])
 def save_property(user_id):
     """Save a property for a buyer"""
     try:
@@ -406,7 +406,7 @@ def save_property(user_id):
 
 
 @bp.route(
-    "/<uuid:user_id>/saved-properties/<uuid:property_id>", methods=["DELETE"]
+    "/<string:user_id>/saved-properties/<uuid:property_id>", methods=["DELETE"]
 )
 def remove_saved_property(user_id, property_id):
     """Remove a saved property for a buyer"""
@@ -458,7 +458,7 @@ def remove_saved_property(user_id, property_id):
 
 
 @bp.route(
-    "/<uuid:user_id>/saved-properties/<uuid:property_id>/notes",
+    "/<string:user_id>/saved-properties/<uuid:property_id>/notes",
     methods=["PATCH"],
 )
 def update_saved_property_notes(user_id, property_id):
@@ -506,11 +506,6 @@ def update_saved_property_notes(user_id, property_id):
                     "user_id": str(user_id),
                     "property_id": str(property_id),
                     "notes": saved_property.notes,
-                    "updated_at": (
-                        saved_property.updated_at.isoformat()
-                        if saved_property.updated_at
-                        else None
-                    ),
                 },
             }
         )

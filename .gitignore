@@ -32,7 +32,6 @@ TODO.md
 .coverage
 
 # Scripts with sensitive data
-scripts/deploy_to_azure.sh
 scripts/reset_azure_db.sh
 scripts/azure_config.sh
-scripts/run_api.sh
+scripts/reset_azure_db.py
