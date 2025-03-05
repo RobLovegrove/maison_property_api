@@ -14,7 +14,7 @@ from app.schemas import (
     UserUpdateSchema,
 )
 from marshmallow import ValidationError
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 bp = Blueprint("users", __name__)
 
@@ -70,7 +70,7 @@ def create_user():
         return jsonify({"error": "Failed to create user"}), 500
 
 
-@bp.route("/<uuid:user_id>", methods=["GET"])
+@bp.route("/<string:user_id>", methods=["GET"])
 def get_user(user_id):
     """Get basic user details"""
     user = User.query.get_or_404(user_id)
@@ -140,6 +140,7 @@ def get_user_dashboard(user_id):
         "saved_properties": [],
         "negotiations_as_buyer": [],
         "negotiations_as_seller": [],
+        "offered_properties": [],
     }
 
     # If user is a seller, get their listed properties and negotiations
@@ -324,6 +325,12 @@ def get_user_dashboard(user_id):
                 db.joinedload(PropertyNegotiation.property).joinedload(
                     Property.seller
                 ),
+                db.joinedload(PropertyNegotiation.property).joinedload(
+                    Property.address
+                ),
+                db.joinedload(PropertyNegotiation.property).joinedload(
+                    Property.specs
+                ),
             )
             .all()
         )
@@ -373,6 +380,83 @@ def get_user_dashboard(user_id):
             }
             for neg in buyer_negotiations
         ]
+
+        # Add offered properties
+        offered_properties = []
+        for neg in buyer_negotiations:
+            property = neg.property
+            if property:
+                latest_transaction = (
+                    sorted(neg.transactions, key=lambda x: x.created_at)[-1]
+                    if neg.transactions
+                    else None
+                )
+                offered_properties.append(
+                    {
+                        "property_id": str(property.id),
+                        "price": property.price,
+                        "bedrooms": property.bedrooms,
+                        "bathrooms": property.bathrooms,
+                        "main_image_url": property.main_image_url,
+                        "created_at": (
+                            property.created_at.isoformat()
+                            if property.created_at
+                            else None
+                        ),
+                        "seller_id": property.seller_id,
+                        "status": property.status,
+                        "address": {
+                            "house_number": (
+                                property.address.house_number
+                                if property.address
+                                else None
+                            ),
+                            "street": (
+                                property.address.street
+                                if property.address
+                                else None
+                            ),
+                            "city": (
+                                property.address.city
+                                if property.address
+                                else None
+                            ),
+                            "postcode": (
+                                property.address.postcode
+                                if property.address
+                                else None
+                            ),
+                        },
+                        "specs": {
+                            "property_type": (
+                                property.specs.property_type
+                                if property.specs
+                                else None
+                            ),
+                            "square_footage": (
+                                float(property.specs.square_footage)
+                                if property.specs
+                                and property.specs.square_footage
+                                else None
+                            ),
+                        },
+                        "latest_offer": {
+                            "amount": (
+                                latest_transaction.offer_amount
+                                if latest_transaction
+                                else None
+                            ),
+                            "status": neg.status,
+                            "last_updated": (
+                                neg.updated_at.isoformat()
+                                if neg.updated_at
+                                else None
+                            ),
+                        },
+                    }
+                )
+
+        dashboard_data["offered_properties"] = offered_properties
 
     return jsonify(dashboard_data)
 
@@ -734,18 +818,18 @@ def create_offer(user_id):
         )
 
 
-@bp.route("/<uuid:user_id>/offers/<uuid:negotiation_id>", methods=["PUT"])
+@bp.route("/<string:user_id>/offers/<uuid:negotiation_id>", methods=["PUT"])
 def update_offer_status(user_id, negotiation_id):
     """Update an offer's status (accept/reject/cancel)"""
     try:
         # Get the negotiation
         negotiation = PropertyNegotiation.query.get_or_404(negotiation_id)
-        property_item = Property.query.get(negotiation.property_id)
+        property_item = Property.query.get_or_404(negotiation.property_id)
 
         # Verify user is involved in this negotiation
-        if str(user_id) != str(property_item.user_id) and str(user_id) != str(
-            negotiation.buyer_id
-        ):
+        if str(user_id) != str(property_item.seller_id) and str(
+            user_id
+        ) != str(negotiation.buyer_id):
             return (
                 jsonify(
                     {
@@ -779,7 +863,7 @@ def update_offer_status(user_id, negotiation_id):
         )
 
         # Check if negotiation is already completed
-        if negotiation.status in ["accepted", "rejected", "cancelled"]:
+        if negotiation.status in ["rejected", "cancelled"]:
             return (
                 jsonify(
                     {
@@ -793,9 +877,9 @@ def update_offer_status(user_id, negotiation_id):
             )
 
         # Verify the right person is taking action based on last offer
-        is_seller = str(user_id) == str(property_item.user_id)
+        is_seller = str(user_id) == str(property_item.seller_id)
         last_offer_by_seller = str(latest_offer.made_by) == str(
-            property_item.user_id
+            property_item.seller_id
         )
 
         if action in ["accept", "reject"]:
@@ -816,6 +900,95 @@ def update_offer_status(user_id, negotiation_id):
                     ),
                     400,
                 )
+
+        # Special handling for rejecting an accepted offer
+        if negotiation.status == "accepted" and action == "reject":
+            # Check if within cooling-off period (24 hours)
+            cooling_off_period = timedelta(hours=24)
+            time_since_acceptance = (
+                datetime.now(timezone.utc) - negotiation.accepted_at
+            )
+
+            current_app.logger.info(
+                f"Attempting to reject accepted offer: "
+                f"time_since_acceptance={time_since_acceptance}, "
+                f"cooling_off_period={cooling_off_period}, "
+                f"accepted_at={negotiation.accepted_at}, "
+                f"current_time={datetime.now(timezone.utc)}"
+            )
+
+            if time_since_acceptance > cooling_off_period:
+                current_app.logger.warning(
+                    "Cooling-off period expired "
+                    f"for negotiation {negotiation_id}"
+                )
+                return (
+                    jsonify(
+                        {
+                            "error": (
+                                "Cooling-off period has expired."
+                                " Cannot reject an "
+                                "accepted offer after 24 hours of acceptance."
+                            ),
+                            "accepted_at": negotiation.accepted_at.isoformat(),
+                            "cooling_off_expires_at": (
+                                negotiation.accepted_at + cooling_off_period
+                            ).isoformat(),
+                            "time_remaining": None,
+                        }
+                    ),
+                    400,
+                )
+
+            current_app.logger.info(
+                f"Rejecting offer within cooling-off period. "
+                f"User={user_id}, Negotiation={negotiation_id}"
+            )
+
+            negotiation.status = "rejected"
+            negotiation.rejected_by = user_id
+            negotiation.rejected_at = datetime.now(timezone.utc)
+            negotiation.rejection_reason = "Rejected during cooling-off period"
+
+            # Set property back to for_sale if no other accepted negotiations
+            if not PropertyNegotiation.query.filter(
+                PropertyNegotiation.property_id == property_item.id,
+                PropertyNegotiation.id != negotiation.id,
+                PropertyNegotiation.status == "accepted",
+            ).first():
+                property_item.status = "for_sale"
+
+            db.session.commit()
+
+            time_remaining = cooling_off_period - time_since_acceptance
+
+            return jsonify(
+                {
+                    "message": (
+                        "Offer rejected during cooling-off period. "
+                        "No consequences applied."
+                    ),
+                    "negotiation": {
+                        "negotiation_id": str(negotiation.id),
+                        "property_id": str(property_item.id),
+                        "buyer_id": str(negotiation.buyer_id),
+                        "seller_id": str(property_item.seller_id),
+                        "status": negotiation.status,
+                        "updated_at": negotiation.updated_at.isoformat(),
+                        "action_by": str(user_id),
+                        "property_status": property_item.status,
+                        "cooling_off_period": {
+                            "accepted_at": negotiation.accepted_at.isoformat(),
+                            "cooling_off_expires_at": (
+                                negotiation.accepted_at + cooling_off_period
+                            ).isoformat(),
+                            "time_remaining_seconds": (
+                                time_remaining.total_seconds()
+                            ),
+                        },
+                    },
+                }
+            )
 
         # Handle different actions
         if action == "accept":
@@ -895,7 +1068,7 @@ def update_offer_status(user_id, negotiation_id):
                     == (
                         str(negotiation.buyer_id)
                         if is_seller
-                        else str(property_item.user_id)
+                        else str(property_item.seller_id)
                     )
                 ]
 
@@ -929,8 +1102,7 @@ def update_offer_status(user_id, negotiation_id):
                     "negotiation_id": str(negotiation.id),
                     "property_id": str(property_item.id),
                     "buyer_id": str(negotiation.buyer_id),
-                    "seller_id": str(property_item.user_id),
-                    "current_offer_amount": current_offer.offer_amount,
+                    "seller_id": str(property_item.seller_id),
                     "status": negotiation.status,
                     "updated_at": negotiation.updated_at.isoformat(),
                     "action_by": str(user_id),
@@ -943,4 +1115,13 @@ def update_offer_status(user_id, negotiation_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error updating offer status: {str(e)}")
-        return jsonify({"error": "Failed to update offer status"}), 500
+        return (
+            jsonify(
+                {
+                    "error": "Failed to update offer status",
+                    "details": str(e),
+                    "type": type(e).__name__,
+                }
+            ),
+            500,
+        )
