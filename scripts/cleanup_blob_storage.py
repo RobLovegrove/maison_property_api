@@ -1,3 +1,21 @@
+'''
+
+This script is used to cleanup orphaned images in blob storage.
+
+It will find all images in blob storage that don't exist in the database and delete them.
+
+*** DRY RUN ***
+
+python scripts/cleanup_blob_storage.py 
+
+*** ACTUALLY DELETES THE IMAGES ***
+
+python scripts/cleanup_blob_storage.py --execute
+
+'''
+
+
+
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

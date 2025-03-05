@@ -28,8 +28,16 @@ class Config:
                 "http://128.251.124.181",
                 "https://maison-frontend.azurewebsites.net",
             ],
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_methods": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "OPTIONS",
+                "PATCH",
+            ],
             "allow_headers": ["Content-Type", "Authorization"],
+            "max_age": 3600,
         }
     }
 
