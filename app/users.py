@@ -218,6 +218,24 @@ def get_user_dashboard(user_id):
                 "last_updated": (
                     neg.updated_at.isoformat() if neg.updated_at else None
                 ),
+                "transaction_history": (
+                    [
+                        {
+                            "offer_amount": trans.offer_amount,
+                            "made_by": str(trans.made_by),
+                            "created_at": (
+                                trans.created_at.isoformat()
+                                if trans.created_at
+                                else None
+                            ),
+                        }
+                        for trans in sorted(
+                            neg.transactions, key=lambda x: x.created_at
+                        )
+                    ]
+                    if neg.transactions
+                    else []
+                ),
             }
             for neg in seller_negotiations
         ]
@@ -333,6 +351,24 @@ def get_user_dashboard(user_id):
                 ),
                 "last_updated": (
                     neg.updated_at.isoformat() if neg.updated_at else None
+                ),
+                "transaction_history": (
+                    [
+                        {
+                            "offer_amount": trans.offer_amount,
+                            "made_by": str(trans.made_by),
+                            "created_at": (
+                                trans.created_at.isoformat()
+                                if trans.created_at
+                                else None
+                            ),
+                        }
+                        for trans in sorted(
+                            neg.transactions, key=lambda x: x.created_at
+                        )
+                    ]
+                    if neg.transactions
+                    else []
                 ),
             }
             for neg in buyer_negotiations
@@ -789,6 +825,20 @@ def update_offer_status(user_id, negotiation_id):
             # Record who accepted the offer
             negotiation.accepted_by = user_id
             negotiation.accepted_at = datetime.now(timezone.utc)
+
+            # Reject all other active negotiations for this property
+            other_negotiations = PropertyNegotiation.query.filter(
+                PropertyNegotiation.property_id == property_item.id,
+                PropertyNegotiation.id != negotiation.id,
+                PropertyNegotiation.status == "active",
+            ).all()
+
+            for other_neg in other_negotiations:
+                other_neg.status = "rejected"
+                other_neg.rejected_by = (
+                    property_item.seller_id
+                )  # Seller auto-rejects
+                other_neg.rejected_at = datetime.now(timezone.utc)
 
         elif action == "reject":
             negotiation.status = "rejected"
