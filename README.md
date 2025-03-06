@@ -429,24 +429,49 @@ Response:
       "negotiation_id": "98de7487-c36f-4111-ba80-388f48a1f614",
       "property_id": "fe08df1c-d24e-4f18-9c7b-cfbe842175f1",
       "status": "active",
-      "transactions": [
+      "transaction_history": [
         {
           "created_at": "2025-03-02T14:40:59.240797+00:00",
           "made_by": "bd70f994-5834-45b9-a6f0-8731e51ff0e6",
-          "offer_amount": 350000,
-          "transaction_id": "b8d20daa-0189-4f77-a890-c0347f88ae85"
+          "offer_amount": 350000
         },
         {
           "created_at": "2025-03-02T14:45:34.356241+00:00",
           "made_by": "3613c096-f41f-479f-a09f-7e0ab53b4eda",
-          "offer_amount": 360000,
-          "transaction_id": "e03a6e0d-fb1c-4967-b8ea-e70354f8f7d7"
+          "offer_amount": 360000
         }
       ],
       "updated_at": "2025-03-02T14:45:34.345590+00:00"
     }
   ],
   "negotiations_as_seller": [],
+  "offered_properties": [
+    {
+      "property_id": "fe08df1c-d24e-4f18-9c7b-cfbe842175f1",
+      "price": 425000,
+      "bedrooms": 4,
+      "bathrooms": 2,
+      "main_image_url": "https://maisonblobstorage.blob.core.windows.net/property-images/2ea1d64a-18da-4752-9b1e-fa40dccd8da9.jpg",
+      "created_at": "2025-03-02T13:56:00.576177+00:00",
+      "seller_id": "3613c096-f41f-479f-a09f-7e0ab53b4eda",
+      "status": "for_sale",
+      "address": {
+        "house_number": "123",
+        "street": "Oak Avenue",
+        "city": "Manchester",
+        "postcode": "M20 3PS"
+      },
+      "specs": {
+        "property_type": "detached",
+        "square_footage": 2100.5
+      },
+      "latest_offer": {
+        "amount": 360000,
+        "status": "active",
+        "last_updated": "2025-03-02T14:45:34.345590+00:00"
+      }
+    }
+  ],
   "roles": [
     {
       "role_type": "buyer"
@@ -497,7 +522,7 @@ Response:
     "first_name": "Wesley",
     "last_name": "Watson",
     "phone_number": "+446479882571",
-    "user_id": "bd70f994-5834-45b9-a6f0-8731e51ff0e6"
+    "id": "bd70f994-5834-45b9-a6f0-8731e51ff0e6"
   }
 }
 ```
