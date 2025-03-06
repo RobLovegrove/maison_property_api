@@ -27,6 +27,9 @@ class Config:
                 "http://4.207.106.67",
                 "http://128.251.124.181",
                 "https://maison-frontend.azurewebsites.net",
+                "172.205.8.94",
+                "https://maison-apim.azure-api.net",
+                "https://maison-apim.azure-api.net/api",
             ],
             "allow_methods": [
                 "GET",

@@ -84,7 +84,6 @@ class PropertySchema(Schema):
     )
     address = fields.Nested(AddressSchema)
     specs = fields.Nested(PropertySpecsSchema)
-    offers = fields.Nested("PropertyOfferSchema", many=True, dump_only=True)
     saved_by_count = fields.Method("get_saved_by_count", dump_only=True)
 
     def get_saved_by_count(self, obj):
@@ -334,21 +333,6 @@ class PropertyCreateSchema(Schema):
         dump_default="for_sale",
         metadata={"description": "Property status (defaults to 'for_sale')"},
     )
-
-
-class PropertyOfferSchema(Schema):
-    """Schema for property offer validation and serialization"""
-
-    offer_id = fields.UUID(dump_only=True, attribute="id")
-    property_id = fields.UUID(required=True)
-    buyer_id = fields.Str(required=True)
-    offer_amount = fields.Integer(
-        required=True, validate=validate.Range(min=0)
-    )
-    status = fields.Str(dump_only=True)  # Only API can update status
-    counter_offer_amount = fields.Integer(validate=validate.Range(min=0))
-    created_at = fields.DateTime(dump_only=True)
-    updated_at = fields.DateTime(dump_only=True)
 
 
 class SavedPropertySchema(Schema):

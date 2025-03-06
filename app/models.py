@@ -151,11 +151,6 @@ class Property(db.Model):
         uselist=False,
         cascade="all, delete-orphan",
     )
-    offers = relationship(
-        "PropertyOffer",
-        back_populates="property",
-        cascade="all, delete-orphan",
-    )
     saved_by = relationship(
         "SavedProperty",
         back_populates="property",
@@ -258,37 +253,6 @@ class PropertyMedia(db.Model):
     display_order = db.Column(db.Integer, nullable=True)
 
     property = relationship("Property", back_populates="media")
-
-
-@dataclass
-class PropertyOffer(db.Model):
-    __tablename__ = "property_offers"
-
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    property_id = db.Column(
-        UUID(as_uuid=True), ForeignKey("properties.id"), nullable=False
-    )
-    buyer_id = db.Column(String(128), ForeignKey("users.id"), nullable=False)
-    offer_amount = db.Column(db.Integer, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default="pending")
-    counter_offer_amount = db.Column(db.Integer)
-    created_at = db.Column(
-        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
-    updated_at = db.Column(
-        db.DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-    )
-
-    property = relationship("Property", back_populates="offers")
-
-    __table_args__ = (
-        db.CheckConstraint(
-            "status IN ('pending', 'accepted', 'rejected', 'countered')",
-            name="valid_offer_status",
-        ),
-    )
 
 
 @dataclass

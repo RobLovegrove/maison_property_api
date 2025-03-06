@@ -1,5 +1,5 @@
 from app import create_app, db
-from app.models import User, Property, Address, PropertySpecs, PropertyMedia, PropertyDetail, PropertyFeatures, UserRole, PropertyOffer, SavedProperty
+from app.models import User, Property, Address, PropertySpecs, PropertyMedia, PropertyDetail, PropertyFeatures, UserRole, SavedProperty
 from datetime import datetime, UTC
 from uuid import uuid4
 import random
@@ -277,15 +277,6 @@ def reset_database():
             )
             db.session.add(details)
 
-            # Add a sample offer for each property
-            offer = PropertyOffer(
-                property_id=property.id,
-                buyer_id=seller_id,
-                offer_amount=int(prop_data["price"] * 0.95),  # 5% below asking
-                status='pending'
-            )
-            db.session.add(offer)
-
             # Add as saved property
             saved = SavedProperty(
                 property_id=property.id,
@@ -294,18 +285,9 @@ def reset_database():
             )
             db.session.add(saved)
 
-        # Create some sample offers
         # Create a dedicated buyer for offers
         buyer_id = uuid4()
         buyer = create_user_with_roles(buyer_id, is_seller=False, is_buyer=True)
-
-        offer = PropertyOffer(
-            property_id=specific_property_id,
-            buyer_id=buyer_id,  # Use dedicated buyer
-            offer_amount=340000,
-            status='pending'
-        )
-        db.session.add(offer)
 
         # Create some saved properties
         saved = SavedProperty(
