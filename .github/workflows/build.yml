@@ -2,6 +2,10 @@ name: Build
 
 on: [push]
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   python-formatting:
     runs-on: ubuntu-latest
