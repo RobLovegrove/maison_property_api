@@ -220,3 +220,40 @@ def mock_env_vars(monkeypatch):
         "AZURE_STORAGE_CONNECTION_STRING", "mock_connection_string"
     )
     monkeypatch.setenv("FLASK_ENV", "testing")
+
+
+@pytest.fixture(scope="function")
+def test_property(session, test_seller):
+    """Create a test property."""
+    property = Property(
+        price=350000,
+        seller_id=test_seller.id,  # Use test_seller instead of test_user
+        status="for_sale",
+    )
+    session.add(property)
+    session.commit()  # Commit first to get the property.id
+
+    # Add required address
+    address = Address(
+        property_id=property.id,  # Now property.id exists
+        house_number="123",
+        street="Test Street",
+        city="London",
+        postcode="SW1 1AA",
+    )
+    session.add(address)
+
+    # Add required specs
+    specs = PropertySpecs(
+        property_id=property.id,  # Now property.id exists
+        bedrooms=3,
+        bathrooms=2,
+        reception_rooms=1,
+        square_footage=1200.0,
+        property_type="semi-detached",
+        epc_rating="B",
+    )
+    session.add(specs)
+
+    session.commit()  # Commit address and specs
+    return property

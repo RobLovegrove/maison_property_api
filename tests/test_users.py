@@ -1,8 +1,6 @@
-import pytest
-from app.models import User, UserRole  # Add any other needed imports
+import pytest  # noqa: F401
+from app.models import UserRole
 
-# Import fixtures from test_properties
-from test_properties import test_property, test_property_data
 
 def test_create_user(client):
     """Test creating a new user"""
@@ -108,9 +106,13 @@ def test_get_user_dashboard_empty(client):
         "email": "dashboard@test.com",
         "roles": [{"role_type": "buyer"}, {"role_type": "seller"}],
     }
-    
-    client.post("/api/users", json=user_data, headers={"Content-Type": "application/json"})
-    
+
+    client.post(
+        "/api/users",
+        json=user_data,
+        headers={"Content-Type": "application/json"},
+    )
+
     # Get their dashboard
     response = client.get(f"/api/users/{user_data['user_id']}/dashboard")
     assert response.status_code == 200
@@ -132,8 +134,12 @@ def test_get_users_list(client):
         "email": "buyer@test.com",
         "roles": [{"role_type": "buyer"}],
     }
-    client.post("/api/users", json=buyer_data, headers={"Content-Type": "application/json"})
-    
+    client.post(
+        "/api/users",
+        json=buyer_data,
+        headers={"Content-Type": "application/json"},
+    )
+
     # Create a seller
     seller_data = {
         "user_id": "cd80f994-5834-45b9-a6f0-8731e51ff0e9",
@@ -142,8 +148,12 @@ def test_get_users_list(client):
         "email": "seller@test.com",
         "roles": [{"role_type": "seller"}],
     }
-    client.post("/api/users", json=seller_data, headers={"Content-Type": "application/json"})
-    
+    client.post(
+        "/api/users",
+        json=seller_data,
+        headers={"Content-Type": "application/json"},
+    )
+
     # Get users list
     response = client.get("/api/users")
     assert response.status_code == 200
@@ -197,7 +207,7 @@ def test_save_property_as_non_buyer(client, test_user, test_property):
         json={"roles": [{"role_type": "seller"}]},
         headers={"Content-Type": "application/json"},
     )
-    
+
     response = client.post(
         f"/api/users/{test_user.id}/saved-properties",
         json={"property_id": str(test_property.id)},
@@ -207,50 +217,55 @@ def test_save_property_as_non_buyer(client, test_user, test_property):
     assert "User must be a buyer" in response.json["error"]
 
 
-def test_user_dashboard_with_activity(client, test_user, test_property, test_seller, session):
+def test_user_dashboard_with_activity(
+    client, test_user, test_property, test_seller, session
+):
     """Test dashboard with saved properties and negotiations"""
     # Set up buyer role for test_user
-    from app.models import UserRole
     buyer_role = UserRole(user_id=test_user.id, role_type="buyer")
     session.add(buyer_role)
     session.commit()
-    
+
     # Save a property
     save_response = client.post(
         f"/api/users/{test_user.id}/saved-properties",
         json={
             "property_id": str(test_property.id),  # Convert UUID to string
-            "notes": "Test note"
+            "notes": "Test note",
         },
         headers={"Content-Type": "application/json"},
     )
     assert save_response.status_code == 201
-    
+
     # Make an offer
     offer_response = client.post(
         f"/api/users/{test_user.id}/offers",
         json={
             "property_id": str(test_property.id),  # Convert UUID to string
-            "offer_amount": 300000
+            "offer_amount": 300000,
         },
         headers={"Content-Type": "application/json"},
     )
     assert offer_response.status_code == 201
-    
+
     # Get dashboard and verify activity
     response = client.get(f"/api/users/{test_user.id}/dashboard")
     assert response.status_code == 200
     assert len(response.json["saved_properties"]) > 0
     assert len(response.json["negotiations_as_buyer"]) > 0
-    
+
     # Verify saved property details
     saved_property = response.json["saved_properties"][0]
-    assert saved_property["property_id"] == str(test_property.id)  # Convert UUID to string for comparison
+    assert saved_property["property_id"] == str(
+        test_property.id
+    )  # Convert UUID to string for comparison
     assert saved_property["notes"] == "Test note"
-    
+
     # Verify negotiation details
     negotiation = response.json["negotiations_as_buyer"][0]
-    assert negotiation["property_id"] == str(test_property.id)  # Convert UUID to string for comparison
+    assert negotiation["property_id"] == str(
+        test_property.id
+    )  # Convert UUID to string for comparison
     assert negotiation["status"] == "active"
     assert len(negotiation["transaction_history"]) > 0
     assert negotiation["transaction_history"][0]["offer_amount"] == 300000
