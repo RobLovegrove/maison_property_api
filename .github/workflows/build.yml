@@ -85,3 +85,6 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/roblovegrove/maison_property_api:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
