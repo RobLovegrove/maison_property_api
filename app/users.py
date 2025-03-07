@@ -77,7 +77,7 @@ def get_user(user_id):
 
     schema = UserSchema(
         only=(
-            "user_id",
+            "id",
             "first_name",
             "last_name",
             "email",
