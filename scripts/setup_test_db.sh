@@ -20,6 +20,27 @@ dropdb test_db --if-exists
 echo "Creating fresh test database..."
 createdb test_db
 
+# More aggressive cleanup of the database
+echo "Performing thorough database cleanup..."
+psql -h localhost -U roblovegrove -d test_db << EOF
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO roblovegrove;
+GRANT ALL ON SCHEMA public TO public;
+-- Reset the search path to ensure we're using the fresh schema
+SET search_path TO public;
+-- Ensure no custom types remain
+DO \$\$
+DECLARE
+    type_name text;
+BEGIN
+    FOR type_name IN (SELECT t.typname FROM pg_type t JOIN pg_namespace n ON t.typnamespace = n.oid WHERE n.nspname = 'public')
+    LOOP
+        EXECUTE 'DROP TYPE IF EXISTS ' || type_name || ' CASCADE';
+    END LOOP;
+END\$\$;
+EOF
+
 echo "Setting environment variables..."
 # Set environment variables for testing
 export FLASK_APP=wsgi.py
@@ -51,22 +72,6 @@ with app.app_context():
 
 echo "Verifying database tables..."
 psql -h localhost -U roblovegrove -d test_db -c "\dt"
-
-echo "Cleaning up existing tables..."
-psql -h localhost -U roblovegrove -d test_db -c "
-DROP SCHEMA public CASCADE;
-CREATE SCHEMA public;
-GRANT ALL ON SCHEMA public TO roblovegrove;
-GRANT ALL ON SCHEMA public TO public;
-"
-
-echo "Creating fresh tables..."
-python3 -c "
-from app import create_app, db
-app = create_app('testing')
-with app.app_context():
-    db.create_all()
-"
 
 echo "Running tests..."
 pytest -v --tb=short

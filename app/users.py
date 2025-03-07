@@ -15,6 +15,7 @@ from app.schemas import (
 )
 from marshmallow import ValidationError
 from datetime import datetime, timezone, timedelta
+import werkzeug.exceptions
 
 bp = Blueprint("users", __name__)
 
@@ -113,6 +114,8 @@ def update_user(user_id):
 
     except ValidationError as e:
         return jsonify({"error": e.messages}), 400
+    except werkzeug.exceptions.NotFound:
+        return jsonify({"error": "User not found"}), 404
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500

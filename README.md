@@ -407,6 +407,54 @@ Error Responses:
 }
 ```
 
+#### PUT /api/users
+Update a user account
+
+All fields are optional
+Partial Updates are allowed
+Returns both success message and updated user data
+
+Example:
+```bash
+curl -X PUT https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users/3613c096-f41f-479f-a09f-7e0ab53b4eda \
+  -H "Content-Type: application/json" \
+  -d '{
+    "first_name": "Updated First Name",
+    "last_name": "Updated Last Name",
+    "email": "newemail@example.com",
+    "phone_number": "07700900001"
+  }'
+```
+
+Response:
+```bash
+{
+  "message": "User updated successfully",
+  "user": {
+    "id": "3613c096-f41f-479f-a09f-7e0ab53b4eda",
+    "first_name": "Updated First Name",
+    "last_name": "Updated Last Name",
+    "email": "newemail@example.com",
+    "phone_number": "07700900001"
+  }
+}
+```
+
+Error Response:
+```json
+{
+  "error": "User not found"
+}
+```
+
+Error Response:
+```json
+{
+  "error": "Email already registered"
+}
+```
+
+
 #### GET /api/users/{user_id}/dashboard
 Get a user's dashboard data including their properties, offers, and saved listings.
 

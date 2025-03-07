@@ -27,11 +27,11 @@ def test_property_data(test_user):
 
 
 @pytest.fixture
-def test_property(session, test_user):
+def test_property(session, test_seller):
     """Create a test property."""
     property = Property(
         price=350000,
-        seller_id=test_user.id,  # Using string ID
+        seller_id=test_seller.id,  # Use test_seller instead of test_user
         status="for_sale",
     )
     session.add(property)
@@ -205,14 +205,192 @@ def test_filter_properties(client, init_database):
     assert all(p["price"] >= 300000 for p in response.json)
 
 
-def test_get_user_properties(client, test_user, test_property):
+def test_get_user_properties(client, test_seller, test_property):
     """Test getting properties for a specific user."""
-    # Verify the property is associated with the test user
-    assert test_property.seller_id == test_user.id
+    # Verify the property is associated with the test seller
+    assert test_property.seller_id == test_seller.id
 
-    response = client.get(f"/api/properties/user/{test_user.id}")
+    response = client.get(f"/api/properties/user/{test_seller.id}")
     assert response.status_code == 200
 
     properties = response.json
     assert len(properties) > 0
-    assert str(properties[0]["seller_id"]) == test_user.id
+    assert str(properties[0]["seller_id"]) == test_seller.id
+
+
+def test_create_property_invalid_price(client, test_property_data):
+    """Test creating a property with invalid price"""
+    test_property_data["price"] = -1000
+    response = client.post(
+        "/api/properties",
+        json=test_property_data,
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 400
+    # Check for either format of error message
+    error_message = str(response.json.get("error", "")).lower()
+    assert any(msg in error_message for msg in ["price", "validation", "invalid"])
+
+
+def test_update_property_status_transitions(client, test_property):
+    """Test property status transitions"""
+    # Test for_sale -> under_offer
+    response = client.put(
+        f"/api/properties/{test_property.id}",
+        json={"status": "under_offer"},
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 200
+    
+    # Verify the status was updated
+    get_response = client.get(f"/api/properties/{test_property.id}")
+    assert get_response.json["status"] == "under_offer"
+    
+    # Test under_offer -> for_sale
+    response = client.put(
+        f"/api/properties/{test_property.id}",
+        json={"status": "for_sale"},
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 200
+    
+    # Verify the status was updated back
+    get_response = client.get(f"/api/properties/{test_property.id}")
+    assert get_response.json["status"] == "for_sale"
+    
+    # Test invalid status
+    response = client.put(
+        f"/api/properties/{test_property.id}",
+        json={"status": "invalid_status"},
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 400
+
+
+def test_property_search_filters(client, test_property):
+    """Test multiple property search filters"""
+    filters = {
+        "min_price": 300000,
+        "max_price": 400000,
+        "bedrooms": 3,
+        "property_type": "semi-detached",
+        "city": "London"
+    }
+    query_string = "&".join(f"{k}={v}" for k, v in filters.items())
+    response = client.get(f"/api/properties?{query_string}")
+    assert response.status_code == 200
+    
+    # If we got any properties back, verify they match the filters
+    if response.json:
+        property = response.json[0]
+        assert property["price"] >= filters["min_price"]
+        assert property["price"] <= filters["max_price"]
+        assert property["bedrooms"] == filters["bedrooms"]
+        assert property["specs"]["property_type"] == filters["property_type"]
+        assert property["address"]["city"].lower() == filters["city"].lower()
+
+
+def test_offer_lifecycle(client, test_user, test_property, test_seller, session):
+    """Test complete offer lifecycle"""
+    # Set up buyer role for test_user
+    from app.models import UserRole
+    buyer_role = UserRole(user_id=test_user.id, role_type="buyer")
+    session.add(buyer_role)
+    session.commit()
+    
+    # Create initial offer
+    offer_response = client.post(
+        f"/api/users/{test_user.id}/offers",
+        json={
+            "property_id": str(test_property.id),  # Convert UUID to string
+            "offer_amount": 300000
+        },
+        headers={"Content-Type": "application/json"},
+    )
+    print(f"Offer response: {offer_response.json}")  # Print error response
+    assert offer_response.status_code == 201
+    negotiation_id = offer_response.json["negotiation"]["negotiation_id"]
+    
+    # Counter offer from seller
+    counter_response = client.post(
+        f"/api/users/{test_seller.id}/offers",
+        json={
+            "property_id": str(test_property.id),  # Convert UUID to string
+            "offer_amount": 310000,
+            "negotiation_id": negotiation_id
+        },
+        headers={"Content-Type": "application/json"},
+    )
+    assert counter_response.status_code == 201
+    
+    # Accept offer
+    accept_response = client.put(
+        f"/api/users/{test_user.id}/offers/{negotiation_id}",
+        json={"action": "accept"},
+        headers={"Content-Type": "application/json"},
+    )
+    assert accept_response.status_code == 200
+    assert accept_response.json["negotiation"]["status"] == "accepted"
+    
+    # Verify property status changed to under_offer
+    property_response = client.get(f"/api/properties/{test_property.id}")
+    assert property_response.json["status"] == "under_offer"
+
+
+def test_concurrent_offers(client, test_user, test_property, test_seller, session):
+    """Test handling multiple offers on same property"""
+    from app.models import User, UserRole
+    
+    # Create another test user
+    other_user = User(
+        id="different-user-id",
+        first_name="Other",
+        last_name="User",
+        email="other@example.com",
+    )
+    session.add(other_user)
+    
+    # Add buyer roles to both users
+    for user in [test_user, other_user]:
+        buyer_role = UserRole(user_id=user.id, role_type="buyer")
+        session.add(buyer_role)
+    
+    session.commit()
+    
+    # Create first offer
+    first_offer = client.post(
+        f"/api/users/{test_user.id}/offers",
+        json={
+            "property_id": str(test_property.id),  # Convert UUID to string
+            "offer_amount": 300000
+        },
+        headers={"Content-Type": "application/json"},
+    )
+    assert first_offer.status_code == 201
+    
+    # Create second offer from different user
+    second_offer = client.post(
+        f"/api/users/{other_user.id}/offers",
+        json={
+            "property_id": str(test_property.id),  # Convert UUID to string
+            "offer_amount": 310000
+        },
+        headers={"Content-Type": "application/json"},
+    )
+    assert second_offer.status_code == 201
+    
+    # Accept first offer
+    accept_response = client.put(
+        f"/api/users/{test_seller.id}/offers/{first_offer.json['negotiation']['negotiation_id']}",
+        json={"action": "accept"},
+        headers={"Content-Type": "application/json"},
+    )
+    assert accept_response.status_code == 200
+    
+    # Verify second offer is automatically rejected
+    dashboard_response = client.get(f"/api/users/{other_user.id}/dashboard")
+    assert dashboard_response.status_code == 200
+    assert any(
+        neg["status"] == "rejected"
+        for neg in dashboard_response.json["negotiations_as_buyer"]
+    )

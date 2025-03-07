@@ -65,17 +65,32 @@ def app_context(app):
 
 @pytest.fixture(scope="function")
 def test_user(session):
-    """Create a test user with buyer and seller roles."""
+    """Create a test user."""
     user = User(
-        id="test-user-id",  # Changed from uuid4() to string ID
+        id="test-user-id",
+        email="test@example.com",
         first_name="Test",
         last_name="User",
-        email=f"test_{datetime.now().timestamp()}@example.com",
-        phone_number="+44123456789",
+        phone_number="+1234567890",
     )
     session.add(user)
     session.commit()
     return user
+
+
+@pytest.fixture(scope="function")
+def test_seller(session):
+    """Create a test seller."""
+    seller = User(
+        id="seller-id",
+        email="seller@example.com",
+        first_name="Test",
+        last_name="Seller",
+        phone_number="+1234567891",
+    )
+    session.add(seller)
+    session.commit()
+    return seller
 
 
 @pytest.fixture(scope="function")
