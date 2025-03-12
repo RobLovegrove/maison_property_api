@@ -2,8 +2,6 @@ import pytest
 from app import create_app, db
 from app.models import (
     Property,
-    Address,
-    PropertySpecs,
     User,
     PropertyMedia,
 )
@@ -96,13 +94,13 @@ def test_seller(session):
 @pytest.fixture(scope="function")
 def init_database(app, session, test_user):
     """Initialize test database with sample data."""
-    # Create test property with all related data
+    # Create test property with all related data and consolidated fields
     property = Property(
         id=uuid4(),  # Add explicit UUID
         price=350000,
         bedrooms=3,
         bathrooms=2.0,
-        seller_id=test_user.id,  # Changed from user_id
+        seller_id=test_user.id,
         main_image_url=(
             "https://maisonblobstorage.blob.core.windows.net/"
             "property-images/"
@@ -110,6 +108,18 @@ def init_database(app, session, test_user):
         ),
         created_at=datetime.now(UTC),
         last_updated=datetime.now(UTC),
+        # Address fields
+        house_number="123",
+        street="Test Street",
+        city="London",
+        postcode="SW1 1AA",
+        latitude=51.5074,
+        longitude=-0.1278,
+        # Specs fields
+        reception_rooms=2,
+        square_footage=1200.0,
+        property_type="semi-detached",
+        epc_rating="B",
     )
 
     session.add(property)
@@ -145,29 +155,6 @@ def init_database(app, session, test_user):
         ),
     ]
     session.add_all(media)
-
-    # Create address
-    address = Address(
-        property=property,
-        house_number="123",
-        street="Test Street",
-        city="London",
-        postcode="SW1 1AA",
-    )
-    session.add(address)
-
-    # Create specs
-    specs = PropertySpecs(
-        property=property,
-        bedrooms=3,
-        bathrooms=2,
-        reception_rooms=2,
-        square_footage=1200.0,
-        property_type="semi-detached",
-        epc_rating="B",
-    )
-    session.add(specs)
-
     session.commit()
     return property
 
@@ -177,7 +164,7 @@ def test_property_data(test_user):
     """Valid property data for tests."""
     return {
         "price": 350000,
-        "seller_id": str(test_user.id),  # Changed from user_id to seller_id
+        "seller_id": str(test_user.id),
         "specs": {
             "bedrooms": 3,
             "bathrooms": 2,
@@ -204,7 +191,7 @@ def mock_services(monkeypatch):
 
     # Replace the BlobStorageService class with our mock instance
     monkeypatch.setattr(
-        "app.properties.BlobStorageService",  # Change this line
+        "app.properties.BlobStorageService",
         lambda: mock_service,
     )
 
@@ -224,28 +211,19 @@ def mock_env_vars(monkeypatch):
 
 @pytest.fixture(scope="function")
 def test_property(session, test_seller):
-    """Create a test property."""
+    """Create a test property with consolidated fields."""
     property = Property(
         price=350000,
-        seller_id=test_seller.id,  # Use test_seller instead of test_user
+        seller_id=test_seller.id,
         status="for_sale",
-    )
-    session.add(property)
-    session.commit()  # Commit first to get the property.id
-
-    # Add required address
-    address = Address(
-        property_id=property.id,  # Now property.id exists
+        # Address fields
         house_number="123",
         street="Test Street",
         city="London",
         postcode="SW1 1AA",
-    )
-    session.add(address)
-
-    # Add required specs
-    specs = PropertySpecs(
-        property_id=property.id,  # Now property.id exists
+        latitude=51.5074,
+        longitude=-0.1278,
+        # Specs fields
         bedrooms=3,
         bathrooms=2,
         reception_rooms=1,
@@ -253,7 +231,6 @@ def test_property(session, test_seller):
         property_type="semi-detached",
         epc_rating="B",
     )
-    session.add(specs)
-
-    session.commit()  # Commit address and specs
+    session.add(property)
+    session.commit()
     return property

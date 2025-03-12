@@ -148,20 +148,12 @@ def get_user_dashboard(user_id):
 
     # If user is a seller, get their listed properties and negotiations
     if any(role.role_type == "seller" for role in user.roles):
-        properties = (
-            Property.query.filter_by(seller_id=user_id)
-            .options(
-                db.joinedload(Property.address), db.joinedload(Property.specs)
-            )
-            .all()
-        )
+        properties = Property.query.filter_by(seller_id=user_id).all()
 
         dashboard_data["listed_properties"] = [
             {
                 "property_id": str(p.id),
                 "price": p.price,
-                "bedrooms": p.bedrooms,
-                "bathrooms": p.bathrooms,
                 "main_image_url": p.main_image_url,
                 "created_at": (
                     p.created_at.isoformat() if p.created_at else None
@@ -169,21 +161,19 @@ def get_user_dashboard(user_id):
                 "seller_id": p.seller_id,
                 "status": p.status,
                 "address": {
-                    "house_number": (
-                        p.address.house_number if p.address else None
-                    ),
-                    "street": p.address.street if p.address else None,
-                    "city": p.address.city if p.address else None,
-                    "postcode": p.address.postcode if p.address else None,
+                    "house_number": p.house_number,
+                    "street": p.street,
+                    "city": p.city,
+                    "postcode": p.postcode,
+                    "latitude": p.latitude,
+                    "longitude": p.longitude,
                 },
                 "specs": {
-                    "property_type": (
-                        p.specs.property_type if p.specs else None
-                    ),
+                    "bedrooms": p.bedrooms,
+                    "bathrooms": p.bathrooms,
+                    "property_type": p.property_type,
                     "square_footage": (
-                        float(p.specs.square_footage)
-                        if p.specs and p.specs.square_footage
-                        else None
+                        float(p.square_footage) if p.square_footage else None
                     ),
                 },
             }
@@ -250,21 +240,12 @@ def get_user_dashboard(user_id):
         saved_properties = []
 
         for save in saved:
-            property = (
-                Property.query.filter_by(id=save.property_id)
-                .options(
-                    db.joinedload(Property.address),
-                    db.joinedload(Property.specs),
-                )
-                .first()
-            )
+            property = Property.query.filter_by(id=save.property_id).first()
             if property:
                 saved_properties.append(
                     {
                         "property_id": str(property.id),
                         "price": property.price,
-                        "bedrooms": property.bedrooms,
-                        "bathrooms": property.bathrooms,
                         "main_image_url": property.main_image_url,
                         "created_at": (
                             property.created_at.isoformat()
@@ -274,37 +255,20 @@ def get_user_dashboard(user_id):
                         "seller_id": property.seller_id,
                         "status": property.status,
                         "address": {
-                            "house_number": (
-                                property.address.house_number
-                                if property.address
-                                else None
-                            ),
-                            "street": (
-                                property.address.street
-                                if property.address
-                                else None
-                            ),
-                            "city": (
-                                property.address.city
-                                if property.address
-                                else None
-                            ),
-                            "postcode": (
-                                property.address.postcode
-                                if property.address
-                                else None
-                            ),
+                            "house_number": property.house_number,
+                            "street": property.street,
+                            "city": property.city,
+                            "postcode": property.postcode,
+                            "latitude": property.latitude,
+                            "longitude": property.longitude,
                         },
                         "specs": {
-                            "property_type": (
-                                property.specs.property_type
-                                if property.specs
-                                else None
-                            ),
+                            "bedrooms": property.bedrooms,
+                            "bathrooms": property.bathrooms,
+                            "property_type": property.property_type,
                             "square_footage": (
-                                float(property.specs.square_footage)
-                                if property.specs
-                                and property.specs.square_footage
+                                float(property.square_footage)
+                                if property.square_footage
                                 else None
                             ),
                         },
@@ -327,12 +291,6 @@ def get_user_dashboard(user_id):
                 db.joinedload(PropertyNegotiation.transactions),
                 db.joinedload(PropertyNegotiation.property).joinedload(
                     Property.seller
-                ),
-                db.joinedload(PropertyNegotiation.property).joinedload(
-                    Property.address
-                ),
-                db.joinedload(PropertyNegotiation.property).joinedload(
-                    Property.specs
                 ),
             )
             .all()
@@ -398,8 +356,6 @@ def get_user_dashboard(user_id):
                     {
                         "property_id": str(property.id),
                         "price": property.price,
-                        "bedrooms": property.bedrooms,
-                        "bathrooms": property.bathrooms,
                         "main_image_url": property.main_image_url,
                         "created_at": (
                             property.created_at.isoformat()
@@ -409,37 +365,20 @@ def get_user_dashboard(user_id):
                         "seller_id": property.seller_id,
                         "status": property.status,
                         "address": {
-                            "house_number": (
-                                property.address.house_number
-                                if property.address
-                                else None
-                            ),
-                            "street": (
-                                property.address.street
-                                if property.address
-                                else None
-                            ),
-                            "city": (
-                                property.address.city
-                                if property.address
-                                else None
-                            ),
-                            "postcode": (
-                                property.address.postcode
-                                if property.address
-                                else None
-                            ),
+                            "house_number": property.house_number,
+                            "street": property.street,
+                            "city": property.city,
+                            "postcode": property.postcode,
+                            "latitude": property.latitude,
+                            "longitude": property.longitude,
                         },
                         "specs": {
-                            "property_type": (
-                                property.specs.property_type
-                                if property.specs
-                                else None
-                            ),
+                            "bedrooms": property.bedrooms,
+                            "bathrooms": property.bathrooms,
+                            "property_type": property.property_type,
                             "square_footage": (
-                                float(property.specs.square_footage)
-                                if property.specs
-                                and property.specs.square_footage
+                                float(property.square_footage)
+                                if property.square_footage
                                 else None
                             ),
                         },

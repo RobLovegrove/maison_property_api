@@ -1,5 +1,5 @@
 import pytest
-from app.models import Property, Address, PropertySpecs  # Add this import
+from app.models import Property  # Remove Address and PropertySpecs imports
 
 
 @pytest.fixture
@@ -7,7 +7,7 @@ def test_property_data(test_user):
     """Valid property data for tests."""
     return {
         "price": 350000,
-        "seller_id": str(test_user.id),  # Changed from user_id to seller_id
+        "seller_id": str(test_user.id),
         "specs": {
             "bedrooms": 3,
             "bathrooms": 2,
@@ -22,7 +22,7 @@ def test_property_data(test_user):
             "city": "London",
             "postcode": "SW1 1AA",
         },
-        "status": "for_sale",  # Added status
+        "status": "for_sale",
     }
 
 
@@ -38,12 +38,10 @@ def test_create_property(client, test_property_data):
     response = client.post(
         "/api/properties",
         json=test_property_data,
-        headers={
-            "Content-Type": "application/json"
-        },  # Added content type header
+        headers={"Content-Type": "application/json"},
     )
     assert response.status_code == 201
-    assert "property_id" in response.json  # Changed from 'id'
+    assert "property_id" in response.json
     assert response.json["message"] == "Property created successfully"
 
 
@@ -61,9 +59,9 @@ def test_get_property_detail(client, init_database):
     )
     assert data["main_image_url"] == expected_image_url
     assert data["price"] == 350000
-    assert data["bedrooms"] == 3
-    assert data["bathrooms"] == 2
+    assert "address" in data
     assert data["address"]["street"] == "Test Street"
+    assert "specs" in data
     assert data["specs"]["property_type"] == "semi-detached"
 
 
@@ -71,8 +69,19 @@ def test_get_property_without_media(client, test_user, session):
     """Test getting property without any media."""
     property = Property(
         price=350000,
-        seller_id=test_user.id,  # Changed from user_id
+        seller_id=test_user.id,
         status="for_sale",
+        # Add required address and specs fields
+        house_number="123",
+        street="Test Street",
+        city="London",
+        postcode="SW1 1AA",
+        bedrooms=3,
+        bathrooms=2,
+        reception_rooms=1,
+        square_footage=1200.0,
+        property_type="semi-detached",
+        epc_rating="B",
     )
     session.add(property)
     session.commit()
@@ -100,24 +109,13 @@ def test_update_property(client, test_user, session):
     # Create test property with all required fields
     property = Property(
         price=350000,
-        seller_id=test_user.id,  # Changed from user_id
+        seller_id=test_user.id,
         status="for_sale",
-        bedrooms=3,
-        bathrooms=2,
-    )
-    session.add(property)
-    session.commit()
-
-    # Add required related objects
-    address = Address(
-        property_id=property.id,
+        # Add required address and specs fields
         house_number="123",
         street="Test Street",
         city="London",
         postcode="SW1 1AA",
-    )
-    specs = PropertySpecs(
-        property_id=property.id,
         bedrooms=3,
         bathrooms=2,
         reception_rooms=1,
@@ -125,7 +123,7 @@ def test_update_property(client, test_user, session):
         property_type="semi-detached",
         epc_rating="B",
     )
-    session.add_all([address, specs])
+    session.add(property)
     session.commit()
 
     update_data = {
@@ -250,7 +248,7 @@ def test_property_search_filters(client, test_property):
         property = response.json[0]
         assert property["price"] >= filters["min_price"]
         assert property["price"] <= filters["max_price"]
-        assert property["bedrooms"] == filters["bedrooms"]
+        assert property["specs"]["bedrooms"] == filters["bedrooms"]
         assert property["specs"]["property_type"] == filters["property_type"]
         assert property["address"]["city"].lower() == filters["city"].lower()
 

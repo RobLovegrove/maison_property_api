@@ -1,9 +1,9 @@
 from app import db
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, String, event
 from sqlalchemy.types import TypeDecorator, CHAR
 import uuid
 
@@ -119,7 +119,7 @@ class Property(db.Model):
         onupdate=datetime.now(timezone.utc),
     )
     status = db.Column(db.String(20), nullable=False, default="for_sale")
-
+    
     # Address fields (from Address model)
     house_number = db.Column(db.String, nullable=True)
     street = db.Column(db.String, nullable=True)
@@ -127,7 +127,7 @@ class Property(db.Model):
     postcode = db.Column(db.String, nullable=True)
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
-
+    
     # Specs fields (from PropertySpecs model)
     reception_rooms = db.Column(db.Integer, nullable=True)
     square_footage = db.Column(db.Float, nullable=True)
@@ -135,6 +135,12 @@ class Property(db.Model):
     epc_rating = db.Column(db.String, nullable=True)
 
     # Relationships with cascade delete
+    address = relationship(
+        "Address",
+        back_populates="property",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
     seller = relationship("User", back_populates="properties")
     media = relationship(
         "PropertyMedia",
@@ -143,6 +149,12 @@ class Property(db.Model):
     )
     details = relationship(
         "PropertyDetail",
+        back_populates="property",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    specs = relationship(
+        "PropertySpecs",
         back_populates="property",
         uselist=False,
         cascade="all, delete-orphan",
@@ -169,7 +181,7 @@ class Property(db.Model):
             f"status IN {tuple(VALID_STATUSES)}", name="valid_property_status"
         ),
     )
-
+    
     def get_address_dict(self):
         """Return address as a dict for backward compatibility"""
         return {
@@ -178,9 +190,9 @@ class Property(db.Model):
             "city": self.city,
             "postcode": self.postcode,
             "latitude": self.latitude,
-            "longitude": self.longitude,
+            "longitude": self.longitude
         }
-
+        
     def get_specs_dict(self):
         """Return specs as a dict for backward compatibility"""
         return {
@@ -189,8 +201,29 @@ class Property(db.Model):
             "reception_rooms": self.reception_rooms,
             "square_footage": self.square_footage,
             "property_type": self.property_type,
-            "epc_rating": self.epc_rating,
+            "epc_rating": self.epc_rating
         }
+        
+    # Sync data between old and new models for backward compatibility
+    def _sync_address_data(self):
+        """Sync data between Property and Address models"""
+        if self.address:
+            self.address.house_number = self.house_number
+            self.address.street = self.street
+            self.address.city = self.city
+            self.address.postcode = self.postcode
+            self.address.latitude = self.latitude
+            self.address.longitude = self.longitude
+            
+    def _sync_specs_data(self):
+        """Sync data between Property and PropertySpecs models"""
+        if self.specs:
+            self.specs.bedrooms = self.bedrooms
+            self.specs.bathrooms = self.bathrooms
+            self.specs.reception_rooms = self.reception_rooms
+            self.specs.square_footage = self.square_footage
+            self.specs.property_type = self.property_type
+            self.specs.epc_rating = self.epc_rating
 
 
 @dataclass
@@ -206,6 +239,54 @@ class PropertyDetail(db.Model):
     heating_type = db.Column(db.String, nullable=True)
 
     property = relationship("Property", back_populates="details")
+
+
+@dataclass
+class Address(db.Model):
+    """
+    DEPRECATED: Address data is now stored directly in the Property model.
+    This model is kept for backward compatibility.
+    """
+    __tablename__ = "addresses"
+
+    id = db.Column(db.Integer, primary_key=True)
+    property_id = db.Column(
+        GUID(), ForeignKey("properties.id", ondelete="CASCADE"), nullable=False
+    )
+    house_number = db.Column(db.String, nullable=False)
+    street = db.Column(db.String, nullable=False)
+    city = db.Column(db.String, nullable=False)
+    postcode = db.Column(db.String, nullable=False)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+
+    property = relationship(
+        "Property",
+        back_populates="address",
+        primaryjoin="Address.property_id == Property.id",
+    )
+
+
+@dataclass
+class PropertySpecs(db.Model):
+    """
+    DEPRECATED: Specs data is now stored directly in the Property model.
+    This model is kept for backward compatibility.
+    """
+    __tablename__ = "property_specs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    property_id = db.Column(
+        GUID(), ForeignKey("properties.id", ondelete="CASCADE"), nullable=False
+    )
+    bedrooms = db.Column(db.Integer, nullable=False)
+    bathrooms = db.Column(db.Integer, nullable=False)
+    reception_rooms = db.Column(db.Integer, nullable=False)
+    square_footage = db.Column(db.Float, nullable=False)
+    property_type = db.Column(db.String, nullable=False)
+    epc_rating = db.Column(db.String, nullable=False)
+
+    property: Mapped["Property"] = relationship(back_populates="specs")
 
 
 @dataclass
@@ -343,3 +424,17 @@ class OfferTransaction(db.Model):
         "PropertyNegotiation", back_populates="transactions"
     )
     user = relationship("User")
+
+
+# Add event listeners to sync data between models
+@event.listens_for(Property, 'before_update')
+def property_before_update(mapper, connection, target):
+    """Sync data from Property to Address and PropertySpecs before update"""
+    target._sync_address_data()
+    target._sync_specs_data()
+
+@event.listens_for(Property, 'before_insert')
+def property_before_insert(mapper, connection, target):
+    """Sync data from Property to Address and PropertySpecs before insert"""
+    # For new properties, we'll create the related models in the API endpoints
+    pass

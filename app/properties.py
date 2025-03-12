@@ -2,14 +2,11 @@ from flask import Blueprint, jsonify, request, current_app
 from app import db
 from app.models import (
     Property,
-    Address,
-    PropertySpecs,
     PropertyMedia,
     User,
 )
 from datetime import datetime, UTC
 from sqlalchemy.sql import select
-from sqlalchemy.orm import joinedload
 from flask_caching import Cache
 from app.utils import geocode_address
 from app.exceptions import GeocodeError
@@ -113,9 +110,7 @@ def validate_property_data(data):
 def get_properties():
     """List view - returns basic property info."""
     try:
-        query = select(Property).options(
-            joinedload(Property.address), joinedload(Property.specs)
-        )
+        query = select(Property)
 
         # Only filter by status if explicitly requested
         if request.args.get("status"):
@@ -135,9 +130,8 @@ def get_properties():
                 Property.bedrooms == int(request.args.get("bedrooms"))
             )
         if request.args.get("property_type"):
-            query = query.join(PropertySpecs).where(
-                PropertySpecs.property_type
-                == request.args.get("property_type")
+            query = query.where(
+                Property.property_type == request.args.get("property_type")
             )
 
         query = query.order_by(Property.price.desc())
@@ -148,27 +142,24 @@ def get_properties():
                 {
                     "property_id": str(p.id),
                     "price": p.price,
-                    "bedrooms": p.bedrooms,
-                    "bathrooms": p.bathrooms,
                     "main_image_url": p.main_image_url,
                     "created_at": p.created_at.isoformat(),
                     "seller_id": str(p.seller_id),
                     "status": p.status,
+                    # Return address as a nested dictionary with lat/long
                     "address": {
-                        "house_number": (
-                            p.address.house_number if p.address else None
-                        ),
-                        "street": p.address.street if p.address else None,
-                        "city": p.address.city if p.address else None,
-                        "postcode": p.address.postcode if p.address else None,
+                        "house_number": p.house_number,
+                        "street": p.street,
+                        "city": p.city,
+                        "postcode": p.postcode,
+                        "latitude": p.latitude,
+                        "longitude": p.longitude,
                     },
                     "specs": {
-                        "property_type": (
-                            p.specs.property_type if p.specs else None
-                        ),
-                        "square_footage": (
-                            p.specs.square_footage if p.specs else None
-                        ),
+                        "bedrooms": p.bedrooms,
+                        "bathrooms": p.bathrooms,
+                        "property_type": p.property_type,
+                        "square_footage": p.square_footage,
                     },
                 }
                 for p in properties
@@ -192,8 +183,6 @@ def get_property(property_id):
             {
                 "property_id": str(property_item.id),
                 "price": property_item.price,
-                "bedrooms": property_item.bedrooms,
-                "bathrooms": property_item.bathrooms,
                 "main_image_url": property_item.main_image_url,
                 "created_at": property_item.created_at.isoformat(),
                 "status": property_item.status,
@@ -250,69 +239,22 @@ def get_property(property_id):
                     None,
                 ),
                 "seller_id": str(property_item.seller_id),
+                # Return address as a nested dictionary with lat/long
                 "address": {
-                    "house_number": (
-                        property_item.address.house_number
-                        if property_item.address
-                        else None
-                    ),
-                    "street": (
-                        property_item.address.street
-                        if property_item.address
-                        else None
-                    ),
-                    "city": (
-                        property_item.address.city
-                        if property_item.address
-                        else None
-                    ),
-                    "postcode": (
-                        property_item.address.postcode
-                        if property_item.address
-                        else None
-                    ),
-                    "latitude": (
-                        property_item.address.latitude
-                        if property_item.address
-                        else None
-                    ),
-                    "longitude": (
-                        property_item.address.longitude
-                        if property_item.address
-                        else None
-                    ),
+                    "house_number": property_item.house_number,
+                    "street": property_item.street,
+                    "city": property_item.city,
+                    "postcode": property_item.postcode,
+                    "latitude": property_item.latitude,
+                    "longitude": property_item.longitude,
                 },
                 "specs": {
-                    "bedrooms": (
-                        property_item.specs.bedrooms
-                        if property_item.specs
-                        else None
-                    ),
-                    "bathrooms": (
-                        property_item.specs.bathrooms
-                        if property_item.specs
-                        else None
-                    ),
-                    "property_type": (
-                        property_item.specs.property_type
-                        if property_item.specs
-                        else None
-                    ),
-                    "square_footage": (
-                        property_item.specs.square_footage
-                        if property_item.specs
-                        else None
-                    ),
-                    "reception_rooms": (
-                        property_item.specs.reception_rooms
-                        if property_item.specs
-                        else None
-                    ),
-                    "epc_rating": (
-                        property_item.specs.epc_rating
-                        if property_item.specs
-                        else None
-                    ),
+                    "bedrooms": property_item.bedrooms,
+                    "bathrooms": property_item.bathrooms,
+                    "reception_rooms": property_item.reception_rooms,
+                    "square_footage": property_item.square_footage,
+                    "property_type": property_item.property_type,
+                    "epc_rating": property_item.epc_rating,
                 },
                 "last_updated": property_item.last_updated.isoformat(),
             }
@@ -446,7 +388,7 @@ def create_property():
 
         property_id = uuid4()
 
-        # Create property with main image and default status
+        # Create property with all fields directly
         property = Property(
             id=property_id,
             price=int(data["price"]),
@@ -456,7 +398,33 @@ def create_property():
             seller_id=data["seller_id"],
             created_at=datetime.now(UTC),
             status=data.get("status", "for_sale"),
+            # Address fields
+            house_number=data["address"]["house_number"],
+            street=data["address"]["street"],
+            city=data["address"]["city"],
+            postcode=data["address"]["postcode"],
+            # Specs fields
+            reception_rooms=data["specs"]["reception_rooms"],
+            square_footage=data["specs"]["square_footage"],
+            property_type=data["specs"]["property_type"],
+            epc_rating=data["specs"]["epc_rating"],
         )
+
+        # Try to geocode the address
+        try:
+            lat, lon = geocode_address(
+                {
+                    "house_number": property.house_number,
+                    "street": property.street,
+                    "city": property.city,
+                    "postcode": property.postcode,
+                }
+            )
+            property.latitude = lat
+            property.longitude = lon
+        except GeocodeError:
+            warnings.append("Could not geocode address")
+
         db.session.add(property)
 
         # Create media entries for all images
@@ -468,36 +436,6 @@ def create_property():
                 display_order=idx,
             )
             db.session.add(media)
-
-        # Create address
-        address = Address(
-            property_id=property_id,
-            house_number=data["address"]["house_number"],
-            street=data["address"]["street"],
-            city=data["address"]["city"],
-            postcode=data["address"]["postcode"],
-        )
-
-        try:
-            lat, lon = geocode_address(address)
-            address.latitude = lat
-            address.longitude = lon
-        except GeocodeError:
-            warnings.append("Could not geocode address")
-
-        db.session.add(address)
-
-        # Create specs
-        specs = PropertySpecs(
-            property_id=property_id,
-            bedrooms=data["specs"]["bedrooms"],
-            bathrooms=data["specs"]["bathrooms"],
-            reception_rooms=data["specs"]["reception_rooms"],
-            square_footage=data["specs"]["square_footage"],
-            property_type=data["specs"]["property_type"],
-            epc_rating=data["specs"]["epc_rating"],
-        )
-        db.session.add(specs)
 
         # Create details if provided
         if "details" in data:
@@ -615,10 +553,21 @@ def update_property(property_id):
         if "status" in validated_data:
             property_item.status = validated_data["status"]
 
-        # Update specs if provided
-        if "specs" in validated_data and property_item.specs:
-            for key, value in validated_data["specs"].items():
-                setattr(property_item.specs, key, value)
+        # Update specs fields directly on the Property model
+        if "specs" in validated_data:
+            specs_data = validated_data["specs"]
+            if "bedrooms" in specs_data:
+                property_item.bedrooms = specs_data["bedrooms"]
+            if "bathrooms" in specs_data:
+                property_item.bathrooms = specs_data["bathrooms"]
+            if "reception_rooms" in specs_data:
+                property_item.reception_rooms = specs_data["reception_rooms"]
+            if "square_footage" in specs_data:
+                property_item.square_footage = specs_data["square_footage"]
+            if "property_type" in specs_data:
+                property_item.property_type = specs_data["property_type"]
+            if "epc_rating" in specs_data:
+                property_item.epc_rating = specs_data["epc_rating"]
 
         db.session.commit()
         return jsonify(

@@ -82,12 +82,51 @@ class PropertySchema(Schema):
         required=True,
         default="for_sale",
     )
-    address = fields.Nested(AddressSchema)
-    specs = fields.Nested(PropertySpecsSchema)
+
+    # Address fields
+    house_number = fields.String(allow_none=True)
+    street = fields.String(allow_none=True)
+    city = fields.String(allow_none=True)
+    postcode = fields.String(allow_none=True)
+    latitude = fields.Float(allow_none=True)
+    longitude = fields.Float(allow_none=True)
+
+    # Specs fields
+    reception_rooms = fields.Integer(allow_none=True)
+    square_footage = fields.Float(allow_none=True)
+    property_type = fields.String(allow_none=True)
+    epc_rating = fields.String(allow_none=True)
+
+    # For backward compatibility
+    address = fields.Method("get_address", dump_only=True)
+    specs = fields.Method("get_specs", dump_only=True)
+
     saved_by_count = fields.Method("get_saved_by_count", dump_only=True)
 
     def get_saved_by_count(self, obj):
         return len(obj.saved_by) if obj.saved_by else 0
+
+    def get_address(self, obj):
+        """Return address as a dict for backward compatibility"""
+        return {
+            "house_number": obj.house_number,
+            "street": obj.street,
+            "city": obj.city,
+            "postcode": obj.postcode,
+            "latitude": obj.latitude,
+            "longitude": obj.longitude,
+        }
+
+    def get_specs(self, obj):
+        """Return specs as a dict for backward compatibility"""
+        return {
+            "bedrooms": obj.bedrooms,
+            "bathrooms": obj.bathrooms,
+            "reception_rooms": obj.reception_rooms,
+            "square_footage": obj.square_footage,
+            "property_type": obj.property_type,
+            "epc_rating": obj.epc_rating,
+        }
 
 
 class PropertyListSchema(Schema):
@@ -109,13 +148,35 @@ class PropertyListSchema(Schema):
     main_image_url = fields.URL(allow_none=True)
     created_at = fields.DateTime(format="iso")
     seller_id = fields.UUID(required=True, attribute="seller_id")
-    address = fields.Nested(
-        AddressSchema(only=("street", "city", "postcode")), dump_only=True
-    )
-    specs = fields.Nested(
-        PropertySpecsSchema(only=("property_type", "square_footage")),
-        dump_only=True,
-    )
+
+    # Direct address fields
+    house_number = fields.String(allow_none=True)
+    street = fields.String(allow_none=True)
+    city = fields.String(allow_none=True)
+    postcode = fields.String(allow_none=True)
+
+    # Direct specs fields
+    property_type = fields.String(allow_none=True)
+    square_footage = fields.Float(allow_none=True)
+
+    # For backward compatibility
+    address = fields.Method("get_address", dump_only=True)
+    specs = fields.Method("get_specs", dump_only=True)
+
+    def get_address(self, obj):
+        """Return address as a dict for backward compatibility"""
+        return {
+            "street": obj.street,
+            "city": obj.city,
+            "postcode": obj.postcode,
+        }
+
+    def get_specs(self, obj):
+        """Return specs as a dict for backward compatibility"""
+        return {
+            "property_type": obj.property_type,
+            "square_footage": obj.square_footage,
+        }
 
 
 class OfferTransactionSchema(Schema):
