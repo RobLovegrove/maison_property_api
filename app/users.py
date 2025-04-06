@@ -193,6 +193,7 @@ def get_user_dashboard(user_id):
             .all()
         )
 
+        # For seller negotiations, also include buyer information
         dashboard_data["negotiations_as_seller"] = [
             {
                 "negotiation_id": str(neg.id),
@@ -212,6 +213,12 @@ def get_user_dashboard(user_id):
                 "last_updated": (
                     neg.updated_at.isoformat() if neg.updated_at else None
                 ),
+                # Add buyer information fields
+                "buyer_status": neg.buyer_status,
+                "preferred_move_in_date": neg.preferred_move_in_date,
+                "payment_method": neg.payment_method,
+                "mortgage_status": neg.mortgage_status,
+                "additional_notes": neg.additional_notes,
                 "transaction_history": (
                     [
                         {
@@ -320,6 +327,12 @@ def get_user_dashboard(user_id):
                 "last_updated": (
                     neg.updated_at.isoformat() if neg.updated_at else None
                 ),
+                # Add buyer information fields
+                "buyer_status": neg.buyer_status,
+                "preferred_move_in_date": neg.preferred_move_in_date,
+                "payment_method": neg.payment_method,
+                "mortgage_status": neg.mortgage_status,
+                "additional_notes": neg.additional_notes,
                 "transaction_history": (
                     [
                         {
@@ -680,20 +693,21 @@ def create_offer(user_id):
 
         else:
             # Handle new offer
-            # Verify user is a buyer
-            if not any(role.role_type == "buyer" for role in user.roles):
-                return (
-                    jsonify({"error": "User must be a buyer to make offers"}),
-                    403,
-                )
-
-            # Verify user isn't the seller
+            # Check if user is the seller of this property
             if str(user_id) == str(property.seller_id):
                 return (
                     jsonify(
                         {"error": "Cannot make offer on your own property"}
                     ),
                     400,
+                )
+
+            # Check if user has buyer role, if not add it
+            if not any(role.role_type == "buyer" for role in user.roles):
+                buyer_role = UserRole(user_id=user_id, role_type="buyer")
+                db.session.add(buyer_role)
+                current_app.logger.info(
+                    f"Added buyer role to {user_id} who was making an offer"
                 )
 
             # Check for existing active negotiation
@@ -707,12 +721,18 @@ def create_offer(user_id):
                     400,
                 )
 
-            # Create new negotiation
+            # Create new negotiation with buyer information
             negotiation = PropertyNegotiation(
                 property_id=property_id,
                 buyer_id=user_id,
                 status="active",
                 last_offer_by=user_id,
+                # Add buyer information fields
+                buyer_status=data.get("buyer_status"),
+                preferred_move_in_date=data.get("preferred_move_in_date"),
+                payment_method=data.get("payment_method"),
+                mortgage_status=data.get("mortgage_status"),
+                additional_notes=data.get("additional_notes"),
             )
             db.session.add(negotiation)
             db.session.flush()  # Get negotiation ID
@@ -745,6 +765,14 @@ def create_offer(user_id):
                             if str(user_id) == str(negotiation.buyer_id)
                             else "buyer"
                         ),
+                        # Include buyer information in response
+                        "buyer_status": negotiation.buyer_status,
+                        "preferred_move_in_date": (
+                            negotiation.preferred_move_in_date
+                        ),
+                        "payment_method": negotiation.payment_method,
+                        "mortgage_status": negotiation.mortgage_status,
+                        "additional_notes": negotiation.additional_notes,
                     },
                 }
             ),

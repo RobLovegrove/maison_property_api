@@ -4,10 +4,12 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_caching import Cache
 from flask_cors import CORS
+from flask_migrate import Migrate
 
 # Initialize extensions
 db = SQLAlchemy()
 cache = Cache()
+migrate = Migrate()
 
 
 def create_app(config_name="development"):
@@ -25,6 +27,7 @@ def create_app(config_name="development"):
 
     # Initialize extensions with app
     db.init_app(app)
+    migrate.init_app(app, db)  # Initialize Flask-Migrate
 
     # Initialize cache with app
     cache.init_app(

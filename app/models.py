@@ -284,6 +284,21 @@ class PropertyNegotiation(db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
+    # Buyer information fields
+    buyer_status = db.Column(
+        db.String(50), nullable=True
+    )  # e.g., "first_time_buyer"
+    preferred_move_in_date = db.Column(
+        db.String(50), nullable=True
+    )  # e.g., "1-3 months"
+    payment_method = db.Column(
+        db.String(50), nullable=True
+    )  # e.g., "mortgage"
+    mortgage_status = db.Column(
+        db.String(50), nullable=True
+    )  # e.g., "mortgage_in_principle"
+    additional_notes = db.Column(db.Text, nullable=True)
+
     # Add new fields for tracking actions
     accepted_by = db.Column(String(128), ForeignKey("users.id"), nullable=True)
     accepted_at = db.Column(db.DateTime(timezone=True), nullable=True)
