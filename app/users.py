@@ -420,12 +420,15 @@ def get_user_dashboard(user_id):
 def save_property(user_id):
     """Save a property for a buyer"""
     try:
-        # Verify user exists and is a buyer
+        # Verify user exists
         user = User.query.get_or_404(user_id)
+
+        # Check if user has buyer role, if not add it
         if not any(role.role_type == "buyer" for role in user.roles):
-            return (
-                jsonify({"error": "User must be a buyer to save properties"}),
-                403,
+            buyer_role = UserRole(user_id=user_id, role_type="buyer")
+            db.session.add(buyer_role)
+            current_app.logger.info(
+                f"Added buyer role to {user_id} who was saving a property"
             )
 
         data = request.get_json()
@@ -486,20 +489,14 @@ def save_property(user_id):
 def remove_saved_property(user_id, property_id):
     """Remove a saved property for a buyer"""
     try:
-        # Verify user exists and is a buyer
+        # Verify user exists
         user = User.query.get_or_404(user_id)
+
+        # Check if user has buyer role, if not add it
         if not any(role.role_type == "buyer" for role in user.roles):
-            return (
-                jsonify(
-                    {
-                        "error": (
-                            "User must be a buyer "
-                            "to manage saved properties"
-                        )
-                    }
-                ),
-                403,
-            )
+            buyer_role = UserRole(user_id=user_id, role_type="buyer")
+            db.session.add(buyer_role)
+            current_app.logger.info(f"Added buyer role to {user_id}")
 
         # Find the saved property
         saved_property = SavedProperty.query.filter_by(
@@ -539,20 +536,14 @@ def remove_saved_property(user_id, property_id):
 def update_saved_property_notes(user_id, property_id):
     """Update notes for a saved property"""
     try:
-        # Verify user exists and is a buyer
+        # Verify user exists
         user = User.query.get_or_404(user_id)
+
+        # Check if user has buyer role, if not add it
         if not any(role.role_type == "buyer" for role in user.roles):
-            return (
-                jsonify(
-                    {
-                        "error": (
-                            "User must be a buyer "
-                            "to update saved properties"
-                        )
-                    }
-                ),
-                403,
-            )
+            buyer_role = UserRole(user_id=user_id, role_type="buyer")
+            db.session.add(buyer_role)
+            current_app.logger.info(f"Added buyer role to {user_id}")
 
         # Find the saved property
         saved_property = SavedProperty.query.filter_by(

@@ -199,24 +199,6 @@ def test_update_user_partial_fields(client, test_user):
     assert response.json["user"]["first_name"] == original_first_name
 
 
-def test_save_property_as_non_buyer(client, test_user, test_property):
-    """Test saving a property when user is not a buyer"""
-    # Update user to be seller only
-    client.put(
-        f"/api/users/{test_user.id}",
-        json={"roles": [{"role_type": "seller"}]},
-        headers={"Content-Type": "application/json"},
-    )
-
-    response = client.post(
-        f"/api/users/{test_user.id}/saved-properties",
-        json={"property_id": str(test_property.id)},
-        headers={"Content-Type": "application/json"},
-    )
-    assert response.status_code == 403
-    assert "User must be a buyer" in response.json["error"]
-
-
 def test_user_dashboard_with_activity(
     client, test_user, test_property, test_seller, session
 ):
