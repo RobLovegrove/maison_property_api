@@ -7,11 +7,13 @@ from app.models import (
     SavedProperty,
     PropertyNegotiation,
     OfferTransaction,
+    TransactionProgress,
 )
 from app.schemas import (
     UserSchema,
     UserCreateSchema,
     UserUpdateSchema,
+    TransactionProgressSchema,
 )
 from marshmallow import ValidationError
 from datetime import datetime, timezone, timedelta
@@ -1086,3 +1088,122 @@ def update_offer_status(user_id, negotiation_id):
             ),
             500,
         )
+
+
+@bp.route("/<string:user_id>/transactions/<uuid:negotiation_id>/progress", methods=["GET"])
+def get_transaction_progress(user_id, negotiation_id):
+    """Get transaction progress for a specific negotiation"""
+    try:
+        # Get the negotiation and verify user is involved
+        negotiation = PropertyNegotiation.query.get_or_404(negotiation_id)
+        property_item = Property.query.get_or_404(negotiation.property_id)
+
+        # Verify user is involved in this negotiation
+        if str(user_id) != str(property_item.seller_id) and str(user_id) != str(negotiation.buyer_id):
+            return jsonify({"error": "Unauthorized to view transaction progress"}), 403
+
+        # Get or create transaction progress
+        progress = TransactionProgress.query.filter_by(negotiation_id=negotiation_id).first()
+        if not progress:
+            progress = TransactionProgress(negotiation_id=negotiation_id)
+            db.session.add(progress)
+            db.session.commit()
+
+        schema = TransactionProgressSchema()
+        return jsonify(schema.dump(progress))
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error getting transaction progress: {str(e)}")
+        return jsonify({"error": "Failed to get transaction progress"}), 500
+
+
+@bp.route("/<string:user_id>/transactions/<uuid:negotiation_id>/progress", methods=["PUT"])
+def update_transaction_progress(user_id, negotiation_id):
+    """Update transaction progress for a specific negotiation"""
+    try:
+        # Get the negotiation and verify user is involved
+        negotiation = PropertyNegotiation.query.get_or_404(negotiation_id)
+        property_item = Property.query.get_or_404(negotiation.property_id)
+
+        # Verify user is involved in this negotiation
+        if str(user_id) != str(property_item.seller_id) and str(user_id) != str(negotiation.buyer_id):
+            return jsonify({"error": "Unauthorized to update transaction progress"}), 403
+
+        # Get or create transaction progress
+        progress = TransactionProgress.query.filter_by(negotiation_id=negotiation_id).first()
+        if not progress:
+            progress = TransactionProgress(negotiation_id=negotiation_id)
+            db.session.add(progress)
+
+        # Load and validate the update data
+        schema = TransactionProgressSchema()
+        data = schema.load(request.get_json(), partial=True)
+
+        # Update the progress record
+        for key, value in data.items():
+            setattr(progress, key, value)
+
+        db.session.commit()
+
+        return jsonify({
+            "message": "Transaction progress updated successfully",
+            "progress": schema.dump(progress)
+        })
+
+    except ValidationError as e:
+        return jsonify({"error": e.messages}), 400
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating transaction progress: {str(e)}")
+        return jsonify({"error": "Failed to update transaction progress"}), 500
+
+
+@bp.route("/<string:user_id>/transactions/<uuid:negotiation_id>/progress/confirm", methods=["POST"])
+def confirm_transaction_step(user_id, negotiation_id):
+    """Confirm a specific step in the transaction process"""
+    try:
+        # Get the negotiation and verify user is involved
+        negotiation = PropertyNegotiation.query.get_or_404(negotiation_id)
+        property_item = Property.query.get_or_404(negotiation.property_id)
+
+        # Verify user is involved in this negotiation
+        if str(user_id) != str(property_item.seller_id) and str(user_id) != str(negotiation.buyer_id):
+            return jsonify({"error": "Unauthorized to confirm transaction step"}), 403
+
+        # Get transaction progress
+        progress = TransactionProgress.query.filter_by(negotiation_id=negotiation_id).first()
+        if not progress:
+            progress = TransactionProgress(negotiation_id=negotiation_id)
+            db.session.add(progress)
+
+        data = request.get_json()
+        if not data or "step" not in data:
+            return jsonify({"error": "step field is required"}), 400
+
+        step = data["step"]
+        is_buyer = str(user_id) == str(negotiation.buyer_id)
+
+        # Map step to field name
+        step_mapping = {
+            "final_checks": "buyer_final_checks_confirmed" if is_buyer else "seller_final_checks_confirmed",
+            "exchange_contracts": "buyer_exchange_contracts_confirmed" if is_buyer else "seller_exchange_contracts_confirmed",
+            "completion": "buyer_completion_confirmed" if is_buyer else "seller_completion_confirmed"
+        }
+
+        if step not in step_mapping:
+            return jsonify({"error": "Invalid step"}), 400
+
+        # Update the confirmation
+        setattr(progress, step_mapping[step], True)
+        db.session.commit()
+
+        return jsonify({
+            "message": f"{step.replace('_', ' ').title()} confirmed successfully",
+            "progress": TransactionProgressSchema().dump(progress)
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error confirming transaction step: {str(e)}")
+        return jsonify({"error": "Failed to confirm transaction step"}), 500

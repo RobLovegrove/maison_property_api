@@ -907,6 +907,182 @@ Error Responses:
 }
 ```
 
+### Transaction Progress
+
+#### GET /users/<user_id>/transactions/<negotiation_id>/progress
+Get current transaction progress
+- Creates a new progress record if none exists
+- Verifies user authorization
+
+Example:
+```bash
+curl https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users/bd70f994-5834-45b9-a6f0-8731e51ff0e6/transactions/98de7487-c36f-4111-ba80-388f48a1f614/progress
+```
+
+Response:
+```json
+{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "negotiation_id": "98de7487-c36f-4111-ba80-388f48a1f614",
+  "mortgage": {
+    "decision": "approved",
+    "provider": "HSBC",
+    "valuation_schedule_date": "2024-03-15",
+    "valuation_visit_completed": true,
+    "valuation_report_received": true,
+    "mortgage_offer_received": true
+  },
+  "property_survey": {
+    "decision": "accepted",
+    "surveyor_name": "John Smith",
+    "survey_visit_completed": true,
+    "survey_report_received": true
+  },
+  "conveyancing": {
+    "buyer_solicitor_name": "Jane Doe",
+    "buyer_solicitor_email": "jane.doe@lawfirm.com",
+    "seller_solicitor_name": "Robert Brown",
+    "seller_solicitor_email": "robert.brown@lawfirm.com",
+    "searches_completed": true,
+    "enquiries_raised": true,
+    "enquiries_answered": true
+  },
+  "final_checks": {
+    "buyer_final_checks_confirmed": true,
+    "seller_final_checks_confirmed": false
+  },
+  "exchange_contracts": {
+    "buyer_exchange_contracts_confirmed": true,
+    "seller_exchange_contracts_confirmed": false
+  },
+  "completion": {
+    "buyer_completion_confirmed": false,
+    "seller_completion_confirmed": false
+  },
+  "created_at": "2024-03-01T10:00:00Z",
+  "updated_at": "2024-03-02T15:30:00Z"
+}
+```
+
+#### PUT /users/<user_id>/transactions/<negotiation_id>/progress
+Update transaction progress
+- Supports partial updates
+- Validates all fields
+- Verifies user authorization
+
+Example:
+```bash
+curl -X PUT https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users/bd70f994-5834-45b9-a6f0-8731e51ff0e6/transactions/98de7487-c36f-4111-ba80-388f48a1f614/progress \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mortgage": {
+      "decision": "approved",
+      "provider": "HSBC",
+      "valuation_schedule_date": "2024-03-15"
+    },
+    "property_survey": {
+      "decision": "accepted",
+      "surveyor_name": "John Smith",
+      "survey_visit_completed": true
+    }
+  }'
+```
+
+Response:
+```json
+{
+  "message": "Transaction progress updated successfully",
+  "progress": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "negotiation_id": "98de7487-c36f-4111-ba80-388f48a1f614",
+    "mortgage": {
+      "decision": "approved",
+      "provider": "HSBC",
+      "valuation_schedule_date": "2024-03-15",
+      "valuation_visit_completed": false,
+      "valuation_report_received": false,
+      "mortgage_offer_received": false
+    },
+    "property_survey": {
+      "decision": "accepted",
+      "surveyor_name": "John Smith",
+      "survey_visit_completed": true,
+      "survey_report_received": false
+    },
+    "conveyancing": {
+      "buyer_solicitor_name": null,
+      "buyer_solicitor_email": null,
+      "seller_solicitor_name": null,
+      "seller_solicitor_email": null,
+      "searches_completed": false,
+      "enquiries_raised": false,
+      "enquiries_answered": false
+    },
+    "final_checks": {
+      "buyer_final_checks_confirmed": false,
+      "seller_final_checks_confirmed": false
+    },
+    "exchange_contracts": {
+      "buyer_exchange_contracts_confirmed": false,
+      "seller_exchange_contracts_confirmed": false
+    },
+    "completion": {
+      "buyer_completion_confirmed": false,
+      "seller_completion_confirmed": false
+    },
+    "created_at": "2024-03-01T10:00:00Z",
+    "updated_at": "2024-03-02T15:30:00Z"
+  }
+}
+```
+
+#### POST /users/<user_id>/transactions/<negotiation_id>/progress/confirm
+Confirm specific steps in the process
+- Handles buyer/seller specific confirmations
+- Supports final checks, exchange contracts, and completion steps
+
+Example:
+```bash
+curl -X POST https://maison-api.jollybush-a62cec71.uksouth.azurecontainerapps.io/api/users/bd70f994-5834-45b9-a6f0-8731e51ff0e6/transactions/98de7487-c36f-4111-ba80-388f48a1f614/progress/confirm \
+  -H "Content-Type: application/json" \
+  -d '{
+    "step": "final_checks"
+  }'
+```
+
+Response:
+```json
+{
+  "message": "Final checks confirmed successfully",
+  "progress": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "negotiation_id": "98de7487-c36f-4111-ba80-388f48a1f614",
+    "final_checks": {
+      "buyer_final_checks_confirmed": true,
+      "seller_final_checks_confirmed": false
+    },
+    "updated_at": "2024-03-02T15:30:00Z"
+  }
+}
+```
+
+Error Responses:
+```json
+{
+  "error": "Unauthorized to view transaction progress"
+}
+```
+```json
+{
+  "error": "Invalid step"
+}
+```
+```json
+{
+  "error": "step field is required"
+}
+```
+
 ## Query Parameters
 
 | Parameter | Type | Description | Example |
