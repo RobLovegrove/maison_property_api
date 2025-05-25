@@ -241,15 +241,17 @@ class PropertyNegotiationSchema(Schema):
 
 class TransactionProgressSchema(Schema):
     """Schema for property transaction progress"""
-    
+
     id = fields.UUID(dump_only=True)
     negotiation_id = fields.UUID(required=True)
-    
+
     # Mortgage Information
-    mortgage_decision = fields.Str(validate=validate.OneOf(['mortgage', 'cash']))
+    mortgage_decision = fields.Str(
+        validate=validate.OneOf(["mortgage", "cash"])
+    )
     mortgage_provider = fields.Str()
     mortgage_provider_submitted = fields.Bool()
-    onsite_visit_required = fields.Str(validate=validate.OneOf(['yes', 'no']))
+    onsite_visit_required = fields.Str(validate=validate.OneOf(["yes", "no"]))
     mortgage_valuation_schedule_date = fields.Date()
     mortgage_valuation_schedule_time = fields.Time()
     mortgage_valuation_visit_completed = fields.Bool()
@@ -257,14 +259,18 @@ class TransactionProgressSchema(Schema):
     mortgage_offer_file_name = fields.Str()
 
     # Property Survey
-    property_survey_decision = fields.Str(validate=validate.OneOf(['yes', 'no']))
+    property_survey_decision = fields.Str(
+        validate=validate.OneOf(["yes", "no"])
+    )
     surveyor_name = fields.Str()
     surveyor_email = fields.Email()
     surveyor_phone = fields.Str()
     survey_schedule_date = fields.Date()
     survey_schedule_time = fields.Time()
     survey_visit_completed = fields.Bool()
-    survey_approval = fields.Str(validate=validate.OneOf(['pending', 'approved', 'rejected']))
+    survey_approval = fields.Str(
+        validate=validate.OneOf(["pending", "approved", "rejected"])
+    )
 
     # Conveyancing
     buyer_solicitor_name = fields.Str()

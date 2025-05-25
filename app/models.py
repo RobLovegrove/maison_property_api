@@ -361,18 +361,26 @@ class OfferTransaction(db.Model):
 
 
 class TransactionProgress(db.Model):
-    """Model for tracking property transaction progress after offer acceptance"""
-    
+    """Model for tracking transaction progress after offer acceptance"""
+
     __tablename__ = "transaction_progress"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    negotiation_id = db.Column(UUID(as_uuid=True), ForeignKey("property_negotiations.id"), nullable=False)
-    
+    negotiation_id = db.Column(
+        UUID(as_uuid=True),
+        ForeignKey("property_negotiations.id"),
+        nullable=False,
+    )
+
     # Mortgage Information
-    mortgage_decision = db.Column(db.String(20), nullable=True)  # "mortgage" or "cash"
+    mortgage_decision = db.Column(
+        db.String(20), nullable=True
+    )  # "mortgage" or "cash"
     mortgage_provider = db.Column(db.String(100), nullable=True)
     mortgage_provider_submitted = db.Column(db.Boolean, default=False)
-    onsite_visit_required = db.Column(db.String(10), nullable=True)  # "yes", "no", null
+    onsite_visit_required = db.Column(
+        db.String(10), nullable=True
+    )  # "yes", "no", null
     mortgage_valuation_schedule_date = db.Column(db.Date, nullable=True)
     mortgage_valuation_schedule_time = db.Column(db.Time, nullable=True)
     mortgage_valuation_visit_completed = db.Column(db.Boolean, default=False)
@@ -380,14 +388,18 @@ class TransactionProgress(db.Model):
     mortgage_offer_file_name = db.Column(db.String(255), nullable=True)
 
     # Property Survey
-    property_survey_decision = db.Column(db.String(10), nullable=True)  # "yes", "no", null
+    property_survey_decision = db.Column(
+        db.String(10), nullable=True
+    )  # "yes", "no", null
     surveyor_name = db.Column(db.String(100), nullable=True)
     surveyor_email = db.Column(db.String(120), nullable=True)
     surveyor_phone = db.Column(db.String(20), nullable=True)
     survey_schedule_date = db.Column(db.Date, nullable=True)
     survey_schedule_time = db.Column(db.Time, nullable=True)
     survey_visit_completed = db.Column(db.Boolean, default=False)
-    survey_approval = db.Column(db.String(20), nullable=True)  # "pending", "approved", "rejected", null
+    survey_approval = db.Column(
+        db.String(20), nullable=True
+    )  # "pending", "approved", "rejected", null
 
     # Conveyancing
     buyer_solicitor_name = db.Column(db.String(100), nullable=True)
@@ -404,31 +416,35 @@ class TransactionProgress(db.Model):
     seller_completion_confirmed = db.Column(db.Boolean, default=False)
 
     # Timestamps
-    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
     updated_at = db.Column(
         db.DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc)
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
-    negotiation = relationship("PropertyNegotiation", backref="transaction_progress")
+    negotiation = relationship(
+        "PropertyNegotiation", backref="transaction_progress"
+    )
 
     __table_args__ = (
         db.CheckConstraint(
             "mortgage_decision IN ('mortgage', 'cash')",
-            name="valid_mortgage_decision"
+            name="valid_mortgage_decision",
         ),
         db.CheckConstraint(
             "onsite_visit_required IN ('yes', 'no')",
-            name="valid_onsite_visit_required"
+            name="valid_onsite_visit_required",
         ),
         db.CheckConstraint(
             "property_survey_decision IN ('yes', 'no')",
-            name="valid_property_survey_decision"
+            name="valid_property_survey_decision",
         ),
         db.CheckConstraint(
             "survey_approval IN ('pending', 'approved', 'rejected')",
-            name="valid_survey_approval"
+            name="valid_survey_approval",
         ),
     )
